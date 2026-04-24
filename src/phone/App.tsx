@@ -132,7 +132,7 @@ function renderPhase(
   return (
     <div style={{ textAlign: 'center' }}>
       <h1 style={{ fontSize: '36px', color: '#7ad8ff', margin: 0 }}>Cast!</h1>
-      <p style={{ opacity: 0.6, marginTop: '8px' }}>Freeze Stars — enemies cold for 5s.</p>
+      <p style={{ opacity: 0.6, marginTop: '8px' }}>Freeze Stars — enemies cold for 3s.</p>
     </div>
   );
 }

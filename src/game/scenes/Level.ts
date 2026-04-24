@@ -4,7 +4,8 @@ import { Enemy } from '../entities/Enemy';
 import type { GameNetClient } from '../net/client';
 
 const SPAWN = { x: 80, y: 440 };
-const FREEZE_DURATION_MS = 5000;
+const FREEZE_DURATION_MS = 3000;
+const CORRIDOR_X = 500;
 
 export class LevelScene extends Phaser.Scene {
   private astronaut!: Astronaut;
@@ -27,6 +28,9 @@ export class LevelScene extends Phaser.Scene {
       ground.create(x, 520, 'ground');
     }
 
+    const ceiling = this.physics.add.staticGroup();
+    ceiling.create(CORRIDOR_X, 360, 'ceiling');
+
     this.add
       .text(480, 60, 'Constellation', {
         fontFamily: 'system-ui, sans-serif',
@@ -36,7 +40,7 @@ export class LevelScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.add
-      .text(480, 88, 'Reach the star. Dodge the enemy — or have her freeze it.', {
+      .text(480, 88, 'Blocked by the plasma column — wait for her freeze, 3s to run past.', {
         fontFamily: 'system-ui, sans-serif',
         fontSize: '14px',
         color: '#a8b0d8',
@@ -63,8 +67,9 @@ export class LevelScene extends Phaser.Scene {
 
     this.astronaut = new Astronaut(this, SPAWN.x, SPAWN.y);
     this.physics.add.collider(this.astronaut.sprite, ground);
+    this.physics.add.collider(this.astronaut.sprite, ceiling);
 
-    this.enemy = new Enemy(this, 500, 480);
+    this.enemy = new Enemy(this, CORRIDOR_X, 435);
     this.physics.add.collider(this.enemy.sprite, ground);
 
     this.physics.add.overlap(this.astronaut.sprite, this.enemy.sprite, () => {

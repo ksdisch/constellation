@@ -8,7 +8,8 @@ export class BootScene extends Phaser.Scene {
   create() {
     this.makeSolidTexture('astronaut', 32, 48, 0xffd166);
     this.makeSolidTexture('ground', 64, 40, 0x4a5888);
-    this.makeSolidTexture('enemy', 36, 36, 0xff6b9d);
+    this.makeSolidTexture('ceiling', 400, 20, 0x2a3a6a);
+    this.makeSolidTexture('enemy', 32, 130, 0xff6b9d);
     this.makeSolidTexture('goal', 28, 28, 0xffef7a);
     this.scene.start('Lobby');
   }
