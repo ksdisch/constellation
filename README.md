@@ -4,7 +4,7 @@ Asymmetric cozy co-op for two. The platforming player runs, jumps, and explores 
 
 ## Status
 
-**M1 — handshake.** Laptop shows a 6-letter room code. Phone enters the code; both sides render a "connected" state over a websocket relay.
+**M2 — one power, one level.** Laptop loads a level with a patrolling enemy and a star goal. Phone shows a spellbook with one power (Freeze Stars). Tap it, solve 3 quick-math problems in 30s, and the enemy freezes for 5s so the astronaut can run past.
 
 Milestones and full plan: `~/.claude/plans/i-ve-started-this-in-fluttering-tiger.md`.
 

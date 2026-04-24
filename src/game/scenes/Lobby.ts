@@ -60,8 +60,11 @@ export class LobbyScene extends Phaser.Scene {
         this.codeText.setText(msg.roomCode);
         this.statusText.setText('Waiting for phone…');
       } else if (msg.type === 'phone-joined') {
-        this.statusText.setText('Phone connected!');
+        this.statusText.setText('Phone connected — starting…');
         this.statusText.setColor('#98ffc8');
+        this.time.delayedCall(900, () => {
+          this.scene.start('Level', { net: this.net });
+        });
       } else if (msg.type === 'error') {
         this.statusText.setText(`Error: ${msg.message}`);
         this.statusText.setColor('#ff9090');

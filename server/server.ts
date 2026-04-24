@@ -79,6 +79,18 @@ wss.on('connection', (ws) => {
       send(ws, { type: 'joined', roomCode: room.code });
       send(room.game, { type: 'phone-joined' });
       console.log(`[room ${room.code}] phone joined`);
+      return;
+    }
+
+    if (!assignedRoom) {
+      send(ws, { type: 'error', message: 'not in a room' });
+      return;
+    }
+    const other = role === 'phone' ? assignedRoom.game : assignedRoom.phone;
+    if (!other) return;
+
+    if (msg.type === 'cast-power' || msg.type === 'puzzle-solved') {
+      send(other, { type: 'power-cast', powerId: msg.powerId });
     }
   });
 

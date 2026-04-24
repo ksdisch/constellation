@@ -1,11 +1,16 @@
-import { useCallback, useRef, useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { RoomJoin } from './components/RoomJoin';
+import { Spellbook } from './components/Spellbook';
+import { QuickMath } from './components/puzzles/QuickMath';
 import { PhoneNetClient } from './net/client';
+import type { PowerId } from '../shared/protocol';
 
 type Phase =
   | { kind: 'idle' }
   | { kind: 'connecting' }
-  | { kind: 'joined'; roomCode: string };
+  | { kind: 'spellbook'; roomCode: string }
+  | { kind: 'puzzle'; roomCode: string; power: PowerId }
+  | { kind: 'cast-feedback'; roomCode: string; power: PowerId };
 
 export function App() {
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
@@ -22,7 +27,7 @@ export function App() {
 
     client.onMessage((msg) => {
       if (msg.type === 'joined') {
-        setPhase({ kind: 'joined', roomCode: msg.roomCode });
+        setPhase({ kind: 'spellbook', roomCode: msg.roomCode });
         setError(null);
       } else if (msg.type === 'error') {
         setError(msg.message);
@@ -39,6 +44,30 @@ export function App() {
     }
   }, []);
 
+  const pickPower = useCallback(
+    (power: PowerId) => {
+      setPhase((p) => (p.kind === 'spellbook' ? { kind: 'puzzle', roomCode: p.roomCode, power } : p));
+    },
+    []
+  );
+
+  const onSolved = useCallback(() => {
+    setPhase((p) => {
+      if (p.kind !== 'puzzle') return p;
+      clientRef.current?.send({ type: 'puzzle-solved', powerId: p.power });
+      return { kind: 'cast-feedback', roomCode: p.roomCode, power: p.power };
+    });
+    setTimeout(() => {
+      setPhase((p) =>
+        p.kind === 'cast-feedback' ? { kind: 'spellbook', roomCode: p.roomCode } : p
+      );
+    }, 1200);
+  }, []);
+
+  const onCancel = useCallback(() => {
+    setPhase((p) => (p.kind === 'puzzle' ? { kind: 'spellbook', roomCode: p.roomCode } : p));
+  }, []);
+
   return (
     <div
       style={{
@@ -50,34 +79,60 @@ export function App() {
         boxSizing: 'border-box',
       }}
     >
-      {phase.kind === 'joined' ? (
-        <div style={{ textAlign: 'center' }}>
-          <h1 style={{ fontSize: '36px', color: '#98ffc8', margin: 0 }}>Connected</h1>
-          <p style={{ opacity: 0.6, marginTop: '8px' }}>
-            Room {phase.roomCode} — powers coming in M2.
-          </p>
-        </div>
-      ) : (
-        <div style={{ width: '100%', maxWidth: '320px' }}>
-          {error && (
-            <div
-              style={{
-                background: '#3a1e28',
-                border: '1px solid #7a3a4a',
-                color: '#ffd3dc',
-                padding: '12px',
-                borderRadius: '8px',
-                marginBottom: '16px',
-                fontSize: '14px',
-                textAlign: 'center',
-              }}
-            >
-              {error}
-            </div>
-          )}
-          <RoomJoin onJoin={handleJoin} busy={phase.kind === 'connecting'} />
-        </div>
-      )}
+      {renderPhase(phase, { handleJoin, pickPower, onSolved, onCancel, error })}
+    </div>
+  );
+}
+
+function renderPhase(
+  phase: Phase,
+  actions: {
+    handleJoin: (code: string) => void;
+    pickPower: (id: PowerId) => void;
+    onSolved: () => void;
+    onCancel: () => void;
+    error: string | null;
+  }
+) {
+  if (phase.kind === 'idle' || phase.kind === 'connecting') {
+    return (
+      <div style={{ width: '100%', maxWidth: '320px' }}>
+        {actions.error && (
+          <div
+            style={{
+              background: '#3a1e28',
+              border: '1px solid #7a3a4a',
+              color: '#ffd3dc',
+              padding: '12px',
+              borderRadius: '8px',
+              marginBottom: '16px',
+              fontSize: '14px',
+              textAlign: 'center',
+            }}
+          >
+            {actions.error}
+          </div>
+        )}
+        <RoomJoin onJoin={actions.handleJoin} busy={phase.kind === 'connecting'} />
+      </div>
+    );
+  }
+  if (phase.kind === 'spellbook') {
+    return (
+      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+        <span style={{ fontSize: '12px', opacity: 0.5 }}>Room {phase.roomCode}</span>
+        <Spellbook onPick={actions.pickPower} />
+      </div>
+    );
+  }
+  if (phase.kind === 'puzzle') {
+    return <QuickMath onSolved={actions.onSolved} onCancel={actions.onCancel} />;
+  }
+  // cast-feedback
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <h1 style={{ fontSize: '36px', color: '#7ad8ff', margin: 0 }}>Cast!</h1>
+      <p style={{ opacity: 0.6, marginTop: '8px' }}>Freeze Stars — enemies cold for 5s.</p>
     </div>
   );
 }
