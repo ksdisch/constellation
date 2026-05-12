@@ -5,11 +5,18 @@ import type { GameNetClient } from '../net/client';
 
 const SPAWN = { x: 80, y: 440 };
 const FREEZE_DURATION_MS = 3000;
-const CORRIDOR_X = 500;
+const CORRIDOR_X = 420;
+const PIT = { startX: 660, endX: 880 };
+const GOAL_POS = { x: 920, y: 470 };
+const PLATFORM_POS = { x: 770, y: 460 };
+const PLATFORM_LIFETIME_MS = 5000;
+const PLATFORM_FADE_OUT_MS = 800;
+const FALL_RESPAWN_Y = 600;
 
 export class LevelScene extends Phaser.Scene {
   private astronaut!: Astronaut;
   private enemy!: Enemy;
+  private platforms!: Phaser.Physics.Arcade.StaticGroup;
   private net!: GameNetClient;
   private won = false;
 
@@ -25,11 +32,14 @@ export class LevelScene extends Phaser.Scene {
   create() {
     const ground = this.physics.add.staticGroup();
     for (let x = 32; x < 960; x += 64) {
+      if (x >= PIT.startX && x < PIT.endX) continue;
       ground.create(x, 520, 'ground');
     }
 
     const ceiling = this.physics.add.staticGroup();
     ceiling.create(CORRIDOR_X, 360, 'ceiling');
+
+    this.platforms = this.physics.add.staticGroup();
 
     this.add
       .text(480, 60, 'Constellation', {
@@ -40,7 +50,7 @@ export class LevelScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.add
-      .text(480, 88, 'Blocked by the plasma column — wait for her freeze, 3s to run past.', {
+      .text(480, 88, 'Freeze her past the plasma column, then summon a bridge across the chasm.', {
         fontFamily: 'system-ui, sans-serif',
         fontSize: '14px',
         color: '#a8b0d8',
@@ -59,15 +69,32 @@ export class LevelScene extends Phaser.Scene {
       if (msg.type === 'error' && msg.message.includes('phone')) {
         linkIndicator.setText('● phone disconnected');
         linkIndicator.setColor('#ff9090');
-      } else if (msg.type === 'power-cast' && msg.powerId === 'freeze-stars') {
-        this.enemy.freeze(FREEZE_DURATION_MS, this);
-        this.flashBanner('FREEZE!', '#7ad8ff');
+        return;
+      }
+      if (msg.type !== 'power-cast') return;
+      switch (msg.powerId) {
+        case 'freeze-stars':
+          this.enemy.freeze(FREEZE_DURATION_MS, this);
+          this.flashBanner('FREEZE!', '#7ad8ff');
+          break;
+        case 'summon-platform':
+          this.summonPlatform();
+          this.flashBanner('PLATFORM!', '#9a7aff');
+          break;
+        case 'illuminate':
+          console.warn('illuminate not implemented');
+          break;
+        default: {
+          const _exhaustive: never = msg.powerId;
+          void _exhaustive;
+        }
       }
     });
 
     this.astronaut = new Astronaut(this, SPAWN.x, SPAWN.y);
     this.physics.add.collider(this.astronaut.sprite, ground);
     this.physics.add.collider(this.astronaut.sprite, ceiling);
+    this.physics.add.collider(this.astronaut.sprite, this.platforms);
 
     this.enemy = new Enemy(this, CORRIDOR_X, 435);
     this.physics.add.collider(this.enemy.sprite, ground);
@@ -77,10 +104,10 @@ export class LevelScene extends Phaser.Scene {
       this.resetAstronaut();
     });
 
-    const goal = this.physics.add.staticSprite(900, 470, 'goal');
+    const goal = this.physics.add.staticSprite(GOAL_POS.x, GOAL_POS.y, 'goal');
     this.tweens.add({
       targets: goal,
-      y: 462,
+      y: GOAL_POS.y - 8,
       yoyo: true,
       repeat: -1,
       duration: 900,
@@ -93,8 +120,27 @@ export class LevelScene extends Phaser.Scene {
 
   update() {
     if (this.won) return;
+    if (this.astronaut.sprite.y > FALL_RESPAWN_Y) {
+      this.resetAstronaut();
+      return;
+    }
     this.astronaut.update();
     this.enemy.update();
+  }
+
+  private summonPlatform() {
+    const sprite = this.platforms.create(PLATFORM_POS.x, PLATFORM_POS.y, 'platform') as Phaser.Physics.Arcade.Sprite;
+    sprite.setAlpha(0);
+    sprite.refreshBody();
+    this.tweens.add({ targets: sprite, alpha: 1, duration: 200 });
+    this.time.delayedCall(PLATFORM_LIFETIME_MS - PLATFORM_FADE_OUT_MS, () => {
+      this.tweens.add({
+        targets: sprite,
+        alpha: 0,
+        duration: PLATFORM_FADE_OUT_MS,
+        onComplete: () => sprite.destroy(),
+      });
+    });
   }
 
   private resetAstronaut() {

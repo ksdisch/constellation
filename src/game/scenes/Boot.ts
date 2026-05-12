@@ -11,6 +11,7 @@ export class BootScene extends Phaser.Scene {
     this.makeSolidTexture('ceiling', 400, 20, 0x2a3a6a);
     this.makeSolidTexture('enemy', 32, 130, 0xff6b9d);
     this.makeSolidTexture('goal', 28, 28, 0xffef7a);
+    this.makeSolidTexture('platform', 96, 14, 0x9a7aff);
     this.scene.start('Lobby');
   }
 

@@ -14,6 +14,12 @@ const POWERS: Power[] = [
     subtitle: 'Quick Math — 3 problems in 30s',
     accent: '#7ad8ff',
   },
+  {
+    id: 'summon-platform',
+    label: 'Summon Platform',
+    subtitle: 'Tap Sequence — repeat 5 lights',
+    accent: '#9a7aff',
+  },
 ];
 
 interface Props {
@@ -69,7 +75,7 @@ export function Spellbook({ onPick }: Props) {
         </button>
       ))}
       <p style={{ fontSize: '12px', opacity: 0.4, textAlign: 'center', marginTop: '12px' }}>
-        More powers arrive in M3.
+        Illuminate arrives in M3.
       </p>
     </div>
   );

@@ -2,8 +2,15 @@ import { useState, useRef, useCallback } from 'react';
 import { RoomJoin } from './components/RoomJoin';
 import { Spellbook } from './components/Spellbook';
 import { QuickMath } from './components/puzzles/QuickMath';
+import { TapSequence } from './components/puzzles/TapSequence';
 import { PhoneNetClient } from './net/client';
 import type { PowerId } from '../shared/protocol';
+
+const FEEDBACK: Record<PowerId, { title: string; color: string; sub: string }> = {
+  'freeze-stars': { title: 'Cast!', color: '#7ad8ff', sub: 'Freeze Stars — enemies cold for 3s.' },
+  'summon-platform': { title: 'Cast!', color: '#9a7aff', sub: 'Platform — bridge holds for 5s.' },
+  'illuminate': { title: 'Cast!', color: '#ffd166', sub: 'Illuminate — coming soon.' },
+};
 
 type Phase =
   | { kind: 'idle' }
@@ -126,13 +133,20 @@ function renderPhase(
     );
   }
   if (phase.kind === 'puzzle') {
-    return <QuickMath onSolved={actions.onSolved} onCancel={actions.onCancel} />;
+    if (phase.power === 'freeze-stars') {
+      return <QuickMath onSolved={actions.onSolved} onCancel={actions.onCancel} />;
+    }
+    if (phase.power === 'summon-platform') {
+      return <TapSequence onSolved={actions.onSolved} onCancel={actions.onCancel} />;
+    }
+    return null;
   }
   // cast-feedback
+  const f = FEEDBACK[phase.power];
   return (
     <div style={{ textAlign: 'center' }}>
-      <h1 style={{ fontSize: '36px', color: '#7ad8ff', margin: 0 }}>Cast!</h1>
-      <p style={{ opacity: 0.6, marginTop: '8px' }}>Freeze Stars — enemies cold for 3s.</p>
+      <h1 style={{ fontSize: '36px', color: f.color, margin: 0 }}>{f.title}</h1>
+      <p style={{ opacity: 0.6, marginTop: '8px' }}>{f.sub}</p>
     </div>
   );
 }
