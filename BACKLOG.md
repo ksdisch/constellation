@@ -87,15 +87,17 @@ Pick items with the `project-backlog` skill in Claude Code.
 
 ## In Progress
 
-### [Feature] Add Summon Platform power + Mini-Sudoku (4×4) puzzle
-- **Why:** Second of the three MVP powers in the plan. Unlocks vertical level design and gives the phone player a tactile grid puzzle that's distinct from arithmetic.
-- **Acceptance:** Phone spellbook shows Summon Platform as a second power. Tapping it opens a 4×4 mini-sudoku. On solve, a platform materializes in-game at a designated spot (target location TBD — probably astronaut-relative or fixed marker). Wire-protocol `summon-platform` round-trips cleanly.
-- **Size:** M
-- **Added:** 2026-05-12
-- **Started:** 2026-05-12
+(none)
 
 ---
 
 ## Done
 
-(none)
+### [Feature] Add Summon Platform power + Tap Sequence puzzle
+- **Why:** Second of the three MVP powers in the plan. Unlocks vertical level design and gives the phone player a tactile, time-pressured puzzle distinct from arithmetic.
+- **Acceptance:** Phone spellbook shows Summon Platform as a second power (purple `#9a7aff`). Tapping it opens a 4-color Simon-Says memory puzzle (5 lights, 25s timer). On solve, a platform materializes at (770, 460) bridging a new pit chasm at x=660–880 and fades out after 5s. Astronaut falling into the chasm respawns. Wire-protocol `summon-platform` round-trips cleanly.
+- **Size:** M
+- **Added:** 2026-05-12
+- **Started:** 2026-05-12
+- **Completed:** 2026-05-12
+- **Note:** Shipped puzzle is Tap Sequence (memory) rather than the originally proposed Mini-Sudoku. Tap Sequence's time pressure pairs with the platform's 5-second decay; a calm logic puzzle would have been a stress mismatch.

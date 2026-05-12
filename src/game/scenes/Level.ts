@@ -78,6 +78,7 @@ export class LevelScene extends Phaser.Scene {
           this.flashBanner('FREEZE!', '#7ad8ff');
           break;
         case 'summon-platform':
+          if (this.platforms.getChildren().length > 0) break;
           this.summonPlatform();
           this.flashBanner('PLATFORM!', '#9a7aff');
           break;
