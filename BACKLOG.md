@@ -17,17 +17,12 @@ Pick items with the `project-backlog` skill in Claude Code.
 - **Size:** S
 - **Added:** 2026-05-12
 
-### [Feature] Add Illuminate power + 3-question trivia puzzle
-- **Why:** Third MVP power. Enables dark-room level design and a low-twitch puzzle (trivia) that complements the time-pressured math and the spatial sudoku.
-- **Acceptance:** Phone spellbook shows Illuminate as a third power. Tap → 3 trivia questions. On solve, a "hidden path" / dark area in the level reveals once, then re-darkens or stays revealed (decide during build). Wire-protocol `illuminate` round-trips.
-- **Size:** M
-- **Added:** 2026-05-12
-
 ### [Feature] Design one level that requires all three powers to clear
 - **Why:** M3 capstone — proves the spellbook concept works as a system, not just as three independent gimmicks. Plan calls this out explicitly.
 - **Acceptance:** Single level where you cannot reach the goal without using Freeze Stars, Summon Platform, and Illuminate at least once each. Layout designed so the order of casts matters (or doesn't — call it during build).
 - **Size:** M
 - **Added:** 2026-05-12
+- **Note:** Largely subsumed by the Illuminate work — that feature extends Level.ts to put all three powers in sequence (chasm → dark zone → win). May be redundant by completion; reassess at M3 closeout.
 
 ### [Feature] Solo dev mode — fake the phone side for solo level testing
 - **Why:** Listed as an open question in the plan with a "lean yes" stance. Hugely useful for iterating on levels without scheduling co-op time. Without it, every level test requires two people and two devices.
@@ -87,7 +82,12 @@ Pick items with the `project-backlog` skill in Claude Code.
 
 ## In Progress
 
-(none)
+### [Feature] Add Illuminate power + 3-question trivia puzzle
+- **Why:** Third and final MVP power. Low-twitch puzzle complements time-pressured math (Freeze) and tactile memory (Platform). Earns a *permanent* dark-zone reveal — different payoff rhythm from the other two casts.
+- **Acceptance:** Phone spellbook shows Illuminate as a third power (warm yellow `#f6c971`). Tapping it opens a 3-question multiple-choice trivia puzzle (sampled from pool of 12, 30s total timer, wrong answer resets to question 1). On solve, a black rectangle covering a hidden platform in the level fades out over 800ms and stays revealed for the rest of the level. The hidden platform gates the path to the win tile, so Illuminate is load-bearing. Wire-protocol `illuminate` round-trips. Level showcases all three powers in sequence (chasm → dark zone → win).
+- **Size:** M
+- **Added:** 2026-05-12
+- **Started:** 2026-05-12
 
 ---
 
