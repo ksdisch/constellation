@@ -87,12 +87,13 @@ Pick items with the `project-backlog` skill in Claude Code.
 
 ## In Progress
 
-### [Feature] Add Summon Platform power + Mini-Sudoku (4×4) puzzle
-- **Why:** Second of the three MVP powers in the plan. Unlocks vertical level design and gives the phone player a tactile grid puzzle that's distinct from arithmetic.
-- **Acceptance:** Phone spellbook shows Summon Platform as a second power. Tapping it opens a 4×4 mini-sudoku. On solve, a platform materializes in-game at a designated spot (target location TBD — probably astronaut-relative or fixed marker). Wire-protocol `summon-platform` round-trips cleanly.
+### [Feature] Add Summon Platform power + TapSequence (Simon-Says) puzzle
+- **Why:** Second of the three MVP powers in the plan. Unlocks bridging-across-gaps level design and gives the phone player a memory/timing puzzle distinct from Freeze Stars' arithmetic.
+- **Acceptance:** Phone spellbook shows Summon Platform as a second power (purple `#9a7aff` accent). Tapping it opens a 4-color TapSequence puzzle (5-light sequence, 25s timer, re-flash on error). On solve, a platform materializes in-game at a fixed bridge position with a 200ms fade-in and a 5s lifetime + 800ms fade-out. Level redesigned with a pit chasm at x=660–880 so the platform acts as a required bridge, not an optional shortcut. Wire-protocol `summon-platform` round-trips cleanly. Remaining work: typecheck, read-only audit (phone + game), conditional fix-up, end-to-end smoke test on two devices.
 - **Size:** M
 - **Added:** 2026-05-12
 - **Started:** 2026-05-12
+- **Note:** Original design (4×4 mini-sudoku, permanent platform, gold accent) was swapped to TapSequence + decaying platform + purple during WIP — see `chore(m3): rewrite orchestrator plan to match adopted WIP` (887099b) for the design rationale.
 
 ---
 
