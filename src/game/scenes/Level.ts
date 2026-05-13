@@ -221,12 +221,20 @@ export class LevelScene extends Phaser.Scene {
         fontStyle: 'bold',
       })
       .setOrigin(0.5);
+
+    const restartButton = this.add
+      .rectangle(480, 310, 180, 48, 0x98ffc8)
+      .setStrokeStyle(2, 0xffffff, 0.4)
+      .setInteractive({ useHandCursor: true });
     this.add
-      .text(480, 300, 'Refresh to play again.', {
+      .text(480, 310, 'Play again', {
         fontFamily: 'system-ui, sans-serif',
-        fontSize: '16px',
-        color: '#a8b0d8',
+        fontSize: '18px',
+        color: '#1a1b3a',
+        fontStyle: 'bold',
       })
       .setOrigin(0.5);
+
+    restartButton.on('pointerdown', () => this.scene.restart({ net: this.net }));
   }
 }
