@@ -7,6 +7,8 @@ Pick items with the `project-backlog` skill in Claude Code.
 
 **How to add an item:** Under `## Open`, create a new `### [Type] Title` heading and fill in Why, Acceptance, Size, and Added.
 
+**Deferred ideas:** Higher-level explorations not yet ready to pick live in [`docs/ideas/`](docs/ideas/).
+
 ---
 
 ## Open
