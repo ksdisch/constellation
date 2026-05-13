@@ -17,24 +17,6 @@ Pick items with the `project-backlog` skill in Claude Code.
 - **Size:** S
 - **Added:** 2026-05-12
 
-### [Feature] Solo dev mode — fake the phone side for solo level testing
-- **Why:** Listed as an open question in the plan with a "lean yes" stance. Hugely useful for iterating on levels without scheduling co-op time. Without it, every level test requires two people and two devices.
-- **Acceptance:** A debug toggle (URL param like `?solo=1`, or keyboard shortcut) that lets the laptop trigger powers directly — e.g. press `1` to fire freeze, `2` summon, `3` illuminate. Skips the relay; useful for level iteration only.
-- **Size:** S
-- **Added:** 2026-05-12
-
-### [Improvement] Sync freeze-duration drift between plan (5s) and code (3s)
-- **Why:** Plan doc says Freeze Stars freezes enemies for 5 seconds; code ships at 3 seconds (`src/game/scenes/Level.ts:7` constant + `src/phone/App.tsx:135` copy). Not broken, but the source of truth is unclear. Resolve before tuning the other powers so timings are consistent.
-- **Acceptance:** Either update the plan doc to match the 3s code (if 3s tuned better in M2 testing) or change the constant back to 5s. Phone "Cast!" copy and any docs reflect the chosen value.
-- **Size:** S
-- **Added:** 2026-05-12
-
-### [Improvement] Replace "Refresh to play again" with an in-game restart button
-- **Why:** Current level-end UX (`src/game/scenes/Level.ts:144`) tells the player to refresh the browser. Workable for M2 smoke-testing, but jarring for actual playtesting and definitely not okay for itch.io release.
-- **Acceptance:** Win screen has a "Play again" button that resets the scene without a full browser reload. Phone side stays connected and returns to the spellbook.
-- **Size:** S
-- **Added:** 2026-05-12
-
 ### [Feature] Galaxy hub scene with planet nodes
 - **Why:** M4 in the plan. Connects multiple levels into a campaign arc and gives the project its cartoon-galaxy identity. Without it, each level is an island.
 - **Acceptance:** New Phaser scene showing a starry galaxy map with planet nodes. Selecting a planet loads its level. At least one planet (the current corridor level, retitled) is reachable from the hub. Hub remembers which planets are unlocked (in-memory for now — persistence is a separate item).
@@ -75,7 +57,29 @@ Pick items with the `project-backlog` skill in Claude Code.
 
 ## In Progress
 
-(none)
+### [Improvement] Sync freeze-duration drift between plan (5s) and code (3s)
+- **Why:** Plan doc says Freeze Stars freezes enemies for 5 seconds; code ships at 3 seconds (`src/game/scenes/Level.ts:7` constant + `src/phone/App.tsx:11` copy). Not broken, but the source of truth is unclear. Resolve before tuning the other powers so timings are consistent.
+- **Acceptance:** Either update the plan doc to match the 3s code (if 3s tuned better in M2 testing) or change the constant back to 5s. Phone "Cast!" copy and any docs reflect the chosen value.
+- **Size:** S
+- **Added:** 2026-05-12
+- **Started:** 2026-05-13
+- **Note:** Decision (locked at bundle bootstrap): 3s wins — M2 playtested at 3s, code + phone copy already agree. In-repo fix is `README.md` only (one stale "5s" in the Status paragraph). Plan doc at `~/.claude/plans/i-ve-started-this-in-fluttering-tiger.md` lives outside the worktree and is updated manually by the user.
+
+### [Improvement] Replace "Refresh to play again" with an in-game restart button
+- **Why:** Current level-end UX (`src/game/scenes/Level.ts:225`) tells the player to refresh the browser. Workable for M2 smoke-testing, but jarring for actual playtesting and definitely not okay for itch.io release.
+- **Acceptance:** Win screen has a "Play again" button that resets the scene without a full browser reload. Phone side stays connected and returns to the spellbook.
+- **Size:** S
+- **Added:** 2026-05-12
+- **Started:** 2026-05-13
+- **Note:** Mechanism is `this.scene.restart()` — the `GameNetClient` is constructed in `LobbyScene` and passed via `init(data.net)`, so the websocket survives a scene restart. No phone-side or protocol change needed.
+
+### [Feature] Solo dev mode — fake the phone side for solo level testing
+- **Why:** Listed as an open question in the plan with a "lean yes" stance. Hugely useful for iterating on levels without scheduling co-op time. Without it, every level test requires two people and two devices.
+- **Acceptance:** A debug toggle (URL param like `?solo=1`, or keyboard shortcut) that lets the laptop trigger powers directly — e.g. press `1` to fire freeze, `2` summon, `3` illuminate. Skips the relay; useful for level iteration only.
+- **Size:** S
+- **Added:** 2026-05-12
+- **Started:** 2026-05-13
+- **Note:** Activation is URL param `?solo=1` (parsed in `BootScene`, skips Lobby and starts Level with an unconnected `GameNetClient`). Keys `1/2/3` fire Freeze / Summon / Illuminate via an extracted `private castPower(id: PowerId)` on `LevelScene` — the wire handler and keyboard handler share the same code path. Keyboard handler is registered only when `solo === true`; no spellbook UI on the laptop.
 
 ---
 
