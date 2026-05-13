@@ -17,13 +17,6 @@ Pick items with the `project-backlog` skill in Claude Code.
 - **Size:** S
 - **Added:** 2026-05-12
 
-### [Feature] Design one level that requires all three powers to clear
-- **Why:** M3 capstone — proves the spellbook concept works as a system, not just as three independent gimmicks. Plan calls this out explicitly.
-- **Acceptance:** Single level where you cannot reach the goal without using Freeze Stars, Summon Platform, and Illuminate at least once each. Layout designed so the order of casts matters (or doesn't — call it during build).
-- **Size:** M
-- **Added:** 2026-05-12
-- **Note:** Largely subsumed by the Illuminate work — that feature extends Level.ts to put all three powers in sequence (chasm → dark zone → win). May be redundant by completion; reassess at M3 closeout.
-
 ### [Feature] Solo dev mode — fake the phone side for solo level testing
 - **Why:** Listed as an open question in the plan with a "lean yes" stance. Hugely useful for iterating on levels without scheduling co-op time. Without it, every level test requires two people and two devices.
 - **Acceptance:** A debug toggle (URL param like `?solo=1`, or keyboard shortcut) that lets the laptop trigger powers directly — e.g. press `1` to fire freeze, `2` summon, `3` illuminate. Skips the relay; useful for level iteration only.
@@ -82,16 +75,28 @@ Pick items with the `project-backlog` skill in Claude Code.
 
 ## In Progress
 
+(none)
+
+---
+
+## Done
+
 ### [Feature] Add Illuminate power + 3-question trivia puzzle
 - **Why:** Third and final MVP power. Low-twitch puzzle complements time-pressured math (Freeze) and tactile memory (Platform). Earns a *permanent* dark-zone reveal — different payoff rhythm from the other two casts.
 - **Acceptance:** Phone spellbook shows Illuminate as a third power (warm yellow `#f6c971`). Tapping it opens a 3-question multiple-choice trivia puzzle (sampled from pool of 12, 30s total timer, wrong answer resets to question 1). On solve, a black rectangle covering a hidden platform in the level fades out over 800ms and stays revealed for the rest of the level. The hidden platform gates the path to the win tile, so Illuminate is load-bearing. Wire-protocol `illuminate` round-trips. Level showcases all three powers in sequence (chasm → dark zone → win).
 - **Size:** M
 - **Added:** 2026-05-12
 - **Started:** 2026-05-12
+- **Completed:** 2026-05-12
+- **Note:** Re-cast after dark zone is destroyed fires the `ILLUMINATE!` banner only (no fade) — diverges intentionally from Summon Platform's silent no-op. Trivia is a 30s commitment; visible confirmation is appropriate. Win tile relocated from y=470 to y=300 to make Illuminate load-bearing per the locked design.
 
----
-
-## Done
+### [Feature] Design one level that requires all three powers to clear (M3 capstone)
+- **Why:** M3 capstone — proves the spellbook concept works as a system, not just as three independent gimmicks.
+- **Acceptance:** Single level where you cannot reach the goal without using Freeze Stars, Summon Platform, and Illuminate at least once each.
+- **Size:** M
+- **Added:** 2026-05-12
+- **Completed:** 2026-05-12
+- **Note:** Folded into the Illuminate feature. The existing Level scene now sequences all three powers: Freeze (enemy) → Summon Platform (chasm bridge) → Illuminate (dark zone hiding a load-bearing platform) → win tile. Reach math confirms the win tile is unreachable without Illuminate (direct jump misses by 21px); the chasm is uncrossable without Summon Platform.
 
 ### [Feature] Add Summon Platform power + Tap Sequence puzzle
 - **Why:** Second of the three MVP powers in the plan. Unlocks vertical level design and gives the phone player a tactile, time-pressured puzzle distinct from arithmetic.

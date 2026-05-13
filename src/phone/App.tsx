@@ -3,13 +3,14 @@ import { RoomJoin } from './components/RoomJoin';
 import { Spellbook } from './components/Spellbook';
 import { QuickMath } from './components/puzzles/QuickMath';
 import { TapSequence } from './components/puzzles/TapSequence';
+import { Trivia } from './components/puzzles/Trivia';
 import { PhoneNetClient } from './net/client';
 import type { PowerId } from '../shared/protocol';
 
 const FEEDBACK: Record<PowerId, { title: string; color: string; sub: string }> = {
   'freeze-stars': { title: 'Cast!', color: '#7ad8ff', sub: 'Freeze Stars — enemies cold for 3s.' },
   'summon-platform': { title: 'Cast!', color: '#9a7aff', sub: 'Platform — bridge holds for 5s.' },
-  'illuminate': { title: 'Cast!', color: '#ffd166', sub: 'Illuminate — coming soon.' },
+  'illuminate': { title: 'Cast!', color: '#f6c971', sub: 'Illuminate — dark zone revealed.' },
 };
 
 type Phase =
@@ -138,6 +139,9 @@ function renderPhase(
     }
     if (phase.power === 'summon-platform') {
       return <TapSequence onSolved={actions.onSolved} onCancel={actions.onCancel} />;
+    }
+    if (phase.power === 'illuminate') {
+      return <Trivia onSolved={actions.onSolved} onCancel={actions.onCancel} />;
     }
     return null;
   }

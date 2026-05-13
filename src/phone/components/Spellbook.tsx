@@ -20,6 +20,12 @@ const POWERS: Power[] = [
     subtitle: 'Tap Sequence — repeat 5 lights',
     accent: '#9a7aff',
   },
+  {
+    id: 'illuminate',
+    label: 'Illuminate',
+    subtitle: 'Trivia — 3 questions in 30s',
+    accent: '#f6c971',
+  },
 ];
 
 interface Props {
@@ -74,9 +80,6 @@ export function Spellbook({ onPick }: Props) {
           <span style={{ fontSize: '13px', opacity: 0.7 }}>{p.subtitle}</span>
         </button>
       ))}
-      <p style={{ fontSize: '12px', opacity: 0.4, textAlign: 'center', marginTop: '12px' }}>
-        Illuminate arrives in M3.
-      </p>
     </div>
   );
 }
