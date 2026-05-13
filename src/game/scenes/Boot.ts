@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { GameNetClient } from '../net/client';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -13,7 +14,15 @@ export class BootScene extends Phaser.Scene {
     this.makeSolidTexture('goal', 28, 28, 0xffef7a);
     this.makeSolidTexture('platform', 96, 14, 0x9a7aff);
     this.makeSolidTexture('hidden-platform', 120, 16, 0x4a5888);
-    this.scene.start('Lobby');
+
+    const isSolo = new URLSearchParams(window.location.search).get('solo') === '1';
+    if (isSolo) {
+      const net = new GameNetClient();
+      // Do not call net.connect() — solo mode bypasses the relay entirely.
+      this.scene.start('Level', { net, solo: true });
+    } else {
+      this.scene.start('Lobby');
+    }
   }
 
   private makeSolidTexture(key: string, w: number, h: number, color: number) {

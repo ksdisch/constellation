@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { Astronaut } from '../entities/Astronaut';
 import { Enemy } from '../entities/Enemy';
 import type { GameNetClient } from '../net/client';
+import type { PowerId } from '../../shared/protocol';
 
 const SPAWN = { x: 80, y: 440 };
 const FREEZE_DURATION_MS = 3000;
@@ -24,13 +25,15 @@ export class LevelScene extends Phaser.Scene {
   private darkZone: Phaser.GameObjects.Rectangle | null = null;
   private net!: GameNetClient;
   private won = false;
+  private solo = false;
 
   constructor() {
     super({ key: 'Level' });
   }
 
-  init(data: { net: GameNetClient }) {
+  init(data: { net: GameNetClient; solo?: boolean }) {
     this.net = data.net;
+    this.solo = data.solo ?? false;
     this.won = false;
   }
 
@@ -89,25 +92,21 @@ export class LevelScene extends Phaser.Scene {
         return;
       }
       if (msg.type !== 'power-cast') return;
-      switch (msg.powerId) {
-        case 'freeze-stars':
-          this.enemy.freeze(FREEZE_DURATION_MS, this);
-          this.flashBanner('FREEZE!', '#7ad8ff');
-          break;
-        case 'summon-platform':
-          if (this.platforms.getChildren().length > 0) break;
-          this.summonPlatform();
-          this.flashBanner('PLATFORM!', '#9a7aff');
-          break;
-        case 'illuminate':
-          this.illuminate();
-          break;
-        default: {
-          const _exhaustive: never = msg.powerId;
-          void _exhaustive;
-        }
-      }
+      this.castPower(msg.powerId);
     });
+
+    if (this.solo) {
+      this.add
+        .text(14, 14, 'SOLO  [1] freeze  [2] platform  [3] illuminate', {
+          fontFamily: 'system-ui, sans-serif',
+          fontSize: '12px',
+          color: '#f6c971',
+        })
+        .setOrigin(0, 0);
+      this.input.keyboard!.on('keydown-ONE', () => this.castPower('freeze-stars'));
+      this.input.keyboard!.on('keydown-TWO', () => this.castPower('summon-platform'));
+      this.input.keyboard!.on('keydown-THREE', () => this.castPower('illuminate'));
+    }
 
     this.astronaut = new Astronaut(this, SPAWN.x, SPAWN.y);
     this.physics.add.collider(this.astronaut.sprite, ground);
@@ -145,6 +144,27 @@ export class LevelScene extends Phaser.Scene {
     }
     this.astronaut.update();
     this.enemy.update();
+  }
+
+  private castPower(powerId: PowerId) {
+    switch (powerId) {
+      case 'freeze-stars':
+        this.enemy.freeze(FREEZE_DURATION_MS, this);
+        this.flashBanner('FREEZE!', '#7ad8ff');
+        break;
+      case 'summon-platform':
+        if (this.platforms.getChildren().length > 0) break;
+        this.summonPlatform();
+        this.flashBanner('PLATFORM!', '#9a7aff');
+        break;
+      case 'illuminate':
+        this.illuminate();
+        break;
+      default: {
+        const _exhaustive: never = powerId;
+        void _exhaustive;
+      }
+    }
   }
 
   private illuminate() {
@@ -235,6 +255,6 @@ export class LevelScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    restartButton.on('pointerdown', () => this.scene.restart({ net: this.net }));
+    restartButton.on('pointerdown', () => this.scene.restart({ net: this.net, solo: this.solo }));
   }
 }
