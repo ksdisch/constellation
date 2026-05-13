@@ -7,16 +7,21 @@ const SPAWN = { x: 80, y: 440 };
 const FREEZE_DURATION_MS = 3000;
 const CORRIDOR_X = 420;
 const PIT = { startX: 660, endX: 880 };
-const GOAL_POS = { x: 920, y: 470 };
+const GOAL_POS = { x: 920, y: 300 };
 const PLATFORM_POS = { x: 770, y: 460 };
 const PLATFORM_LIFETIME_MS = 5000;
 const PLATFORM_FADE_OUT_MS = 800;
+const HIDDEN_PLATFORM_POS = { x: 920, y: 420 };
+const DARK_ZONE = { x: 920, y: 420, width: 160, height: 100 };
+const DARK_ZONE_FADE_MS = 800;
 const FALL_RESPAWN_Y = 600;
 
 export class LevelScene extends Phaser.Scene {
   private astronaut!: Astronaut;
   private enemy!: Enemy;
   private platforms!: Phaser.Physics.Arcade.StaticGroup;
+  private hiddenPlatforms!: Phaser.Physics.Arcade.StaticGroup;
+  private darkZone: Phaser.GameObjects.Rectangle | null = null;
   private net!: GameNetClient;
   private won = false;
 
@@ -41,6 +46,18 @@ export class LevelScene extends Phaser.Scene {
 
     this.platforms = this.physics.add.staticGroup();
 
+    this.hiddenPlatforms = this.physics.add.staticGroup();
+    const hiddenPlatform = this.hiddenPlatforms.create(
+      HIDDEN_PLATFORM_POS.x,
+      HIDDEN_PLATFORM_POS.y,
+      'hidden-platform',
+    ) as Phaser.Physics.Arcade.Sprite;
+    hiddenPlatform.refreshBody();
+
+    this.darkZone = this.add
+      .rectangle(DARK_ZONE.x, DARK_ZONE.y, DARK_ZONE.width, DARK_ZONE.height, 0x000000, 1)
+      .setDepth(50);
+
     this.add
       .text(480, 60, 'Constellation', {
         fontFamily: 'system-ui, sans-serif',
@@ -50,7 +67,7 @@ export class LevelScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.add
-      .text(480, 88, 'Freeze her past the plasma column, then summon a bridge across the chasm.', {
+      .text(480, 88, 'Freeze her past the plasma column, bridge the chasm, then illuminate the hidden path.', {
         fontFamily: 'system-ui, sans-serif',
         fontSize: '14px',
         color: '#a8b0d8',
@@ -78,11 +95,12 @@ export class LevelScene extends Phaser.Scene {
           this.flashBanner('FREEZE!', '#7ad8ff');
           break;
         case 'summon-platform':
+          if (this.platforms.getChildren().length > 0) break;
           this.summonPlatform();
           this.flashBanner('PLATFORM!', '#9a7aff');
           break;
         case 'illuminate':
-          console.warn('illuminate not implemented');
+          this.illuminate();
           break;
         default: {
           const _exhaustive: never = msg.powerId;
@@ -95,6 +113,7 @@ export class LevelScene extends Phaser.Scene {
     this.physics.add.collider(this.astronaut.sprite, ground);
     this.physics.add.collider(this.astronaut.sprite, ceiling);
     this.physics.add.collider(this.astronaut.sprite, this.platforms);
+    this.physics.add.collider(this.astronaut.sprite, this.hiddenPlatforms);
 
     this.enemy = new Enemy(this, CORRIDOR_X, 435);
     this.physics.add.collider(this.enemy.sprite, ground);
@@ -126,6 +145,22 @@ export class LevelScene extends Phaser.Scene {
     }
     this.astronaut.update();
     this.enemy.update();
+  }
+
+  private illuminate() {
+    this.flashBanner('ILLUMINATE!', '#f6c971');
+    // Re-cast behavior: banner-only. The trivia puzzle is a 30s investment,
+    // so even a redundant cast gets visible feedback. The hidden platform
+    // remains revealed across resets (permanent reveal semantics).
+    if (!this.darkZone) return;
+    const zone = this.darkZone;
+    this.darkZone = null;
+    this.tweens.add({
+      targets: zone,
+      alpha: 0,
+      duration: DARK_ZONE_FADE_MS,
+      onComplete: () => zone.destroy(),
+    });
   }
 
   private summonPlatform() {
