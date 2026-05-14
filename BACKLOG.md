@@ -57,21 +57,11 @@ Pick items with the `project-backlog` skill in Claude Code.
 
 ## In Progress
 
-### [Improvement] Sync freeze-duration drift between plan (5s) and code (3s)
-- **Why:** Plan doc says Freeze Stars freezes enemies for 5 seconds; code ships at 3 seconds (`src/game/scenes/Level.ts:7` constant + `src/phone/App.tsx:11` copy). Not broken, but the source of truth is unclear. Resolve before tuning the other powers so timings are consistent.
-- **Acceptance:** Either update the plan doc to match the 3s code (if 3s tuned better in M2 testing) or change the constant back to 5s. Phone "Cast!" copy and any docs reflect the chosen value.
-- **Size:** S
-- **Added:** 2026-05-12
-- **Started:** 2026-05-13
-- **Note:** Decision (locked at bundle bootstrap): 3s wins — M2 playtested at 3s, code + phone copy already agree. In-repo fix is `README.md` only (one stale "5s" in the Status paragraph). Plan doc at `~/.claude/plans/i-ve-started-this-in-fluttering-tiger.md` lives outside the worktree and is updated manually by the user.
+(none)
 
-### [Improvement] Replace "Refresh to play again" with an in-game restart button
-- **Why:** Current level-end UX (`src/game/scenes/Level.ts:225`) tells the player to refresh the browser. Workable for M2 smoke-testing, but jarring for actual playtesting and definitely not okay for itch.io release.
-- **Acceptance:** Win screen has a "Play again" button that resets the scene without a full browser reload. Phone side stays connected and returns to the spellbook.
-- **Size:** S
-- **Added:** 2026-05-12
-- **Started:** 2026-05-13
-- **Note:** Mechanism is `this.scene.restart()` — the `GameNetClient` is constructed in `LobbyScene` and passed via `init(data.net)`, so the websocket survives a scene restart. No phone-side or protocol change needed.
+---
+
+## Done
 
 ### [Feature] Solo dev mode — fake the phone side for solo level testing
 - **Why:** Listed as an open question in the plan with a "lean yes" stance. Hugely useful for iterating on levels without scheduling co-op time. Without it, every level test requires two people and two devices.
@@ -79,11 +69,26 @@ Pick items with the `project-backlog` skill in Claude Code.
 - **Size:** S
 - **Added:** 2026-05-12
 - **Started:** 2026-05-13
-- **Note:** Activation is URL param `?solo=1` (parsed in `BootScene`, skips Lobby and starts Level with an unconnected `GameNetClient`). Keys `1/2/3` fire Freeze / Summon / Illuminate via an extracted `private castPower(id: PowerId)` on `LevelScene` — the wire handler and keyboard handler share the same code path. Keyboard handler is registered only when `solo === true`; no spellbook UI on the laptop.
+- **Completed:** 2026-05-13
+- **Note:** Shipped as `?solo=1` URL param parsed in `BootScene` (constructs an unconnected `GameNetClient` stub, skips `LobbyScene`, starts `LevelScene` with `{ net, solo: true }`). Keys `1`/`2`/`3` map to Freeze / Summon Platform / Illuminate via an extracted `private castPower(powerId: PowerId)` shared with the wire handler — one switch, one exhaustiveness check. Top-left `SOLO  [1] freeze  [2] platform  [3] illuminate` badge renders only in solo. Keyboard handlers are not registered in normal co-op.
 
----
+### [Improvement] Replace "Refresh to play again" with an in-game restart button
+- **Why:** Current level-end UX (`src/game/scenes/Level.ts:225`) tells the player to refresh the browser. Workable for M2 smoke-testing, but jarring for actual playtesting and definitely not okay for itch.io release.
+- **Acceptance:** Win screen has a "Play again" button that resets the scene without a full browser reload. Phone side stays connected and returns to the spellbook.
+- **Size:** S
+- **Added:** 2026-05-12
+- **Started:** 2026-05-13
+- **Completed:** 2026-05-13
+- **Note:** Shipped as a 180×48 mint-green "Play again" button in `showWin()` wired to `this.scene.restart({ net: this.net, solo: this.solo })`. Hand-cursor on hover. The `net` and `solo` pass-through preserves the websocket and (when applicable) solo state across restarts. Restart re-runs `init`/`create`, so the dark zone re-darkens and the chasm is un-bridged — true restart, not state-keep.
 
-## Done
+### [Improvement] Sync freeze-duration drift between plan (5s) and code (3s)
+- **Why:** Plan doc says Freeze Stars freezes enemies for 5 seconds; code ships at 3 seconds (`src/game/scenes/Level.ts:7` constant + `src/phone/App.tsx:11` copy). Not broken, but the source of truth is unclear. Resolve before tuning the other powers so timings are consistent.
+- **Acceptance:** Either update the plan doc to match the 3s code (if 3s tuned better in M2 testing) or change the constant back to 5s. Phone "Cast!" copy and any docs reflect the chosen value.
+- **Size:** S
+- **Added:** 2026-05-12
+- **Started:** 2026-05-13
+- **Completed:** 2026-05-13
+- **Note:** Shipped as one-line `README.md` prose fix ("5s" → "3s"). Code and phone copy already agreed at 3s. Defensive grep confirmed `README.md:7` was the only freeze-related "5s" in the repo. The plan doc at `~/.claude/plans/i-ve-started-this-in-fluttering-tiger.md` is the remaining out-of-repo update, handled manually by the user.
 
 ### [Feature] Add Illuminate power + 3-question trivia puzzle
 - **Why:** Third and final MVP power. Low-twitch puzzle complements time-pressured math (Freeze) and tactile memory (Platform). Earns a *permanent* dark-zone reveal — different payoff rhythm from the other two casts.
