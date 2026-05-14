@@ -1,6 +1,5 @@
 import Phaser from 'phaser';
 import { GameNetClient } from '../net/client';
-import { planet1Config } from '../planets/planet1';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -20,9 +19,8 @@ export class BootScene extends Phaser.Scene {
     if (isSolo) {
       const net = new GameNetClient();
       // Do not call net.connect() — solo mode bypasses the relay entirely.
-      this.scene.start('Planet', {
+      this.scene.start('Hub', {
         net,
-        config: planet1Config,
         solo: true,
         unlockedPlanets: new Set(['planet-1']),
       });

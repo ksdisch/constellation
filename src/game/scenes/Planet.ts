@@ -239,12 +239,13 @@ export class PlanetScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
+    // "Play again" — left button, mint green
     const restartButton = this.add
-      .rectangle(480, 310, 180, 48, 0x98ffc8)
+      .rectangle(380, 310, 180, 48, 0x98ffc8)
       .setStrokeStyle(2, 0xffffff, 0.4)
       .setInteractive({ useHandCursor: true });
     this.add
-      .text(480, 310, 'Play again', {
+      .text(380, 310, 'Play again', {
         fontFamily: 'system-ui, sans-serif',
         fontSize: '18px',
         color: '#1a1b3a',
@@ -255,6 +256,26 @@ export class PlanetScene extends Phaser.Scene {
     restartButton.on('pointerdown', () => this.scene.restart({
       net: this.net,
       config: this.config,
+      solo: this.solo,
+      unlockedPlanets: this.unlockedPlanets,
+    }));
+
+    // "Return to Hub" — right button, slate
+    const hubButton = this.add
+      .rectangle(580, 310, 180, 48, 0xa8b0d8)
+      .setStrokeStyle(2, 0xffffff, 0.4)
+      .setInteractive({ useHandCursor: true });
+    this.add
+      .text(580, 310, 'Return to Hub', {
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: '18px',
+        color: '#1a1b3a',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5);
+
+    hubButton.on('pointerdown', () => this.scene.start('Hub', {
+      net: this.net,
       solo: this.solo,
       unlockedPlanets: this.unlockedPlanets,
     }));

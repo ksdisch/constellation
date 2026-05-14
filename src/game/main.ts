@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { BootScene } from './scenes/Boot';
 import { LobbyScene } from './scenes/Lobby';
+import { HubScene } from './scenes/Hub';
 import { PlanetScene } from './scenes/Planet';
 
 const config: Phaser.Types.Core.GameConfig = {
@@ -16,7 +17,7 @@ const config: Phaser.Types.Core.GameConfig = {
       debug: false,
     },
   },
-  scene: [BootScene, LobbyScene, PlanetScene],
+  scene: [BootScene, LobbyScene, HubScene, PlanetScene],
 };
 
 new Phaser.Game(config);
