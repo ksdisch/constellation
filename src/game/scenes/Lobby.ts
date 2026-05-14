@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GameNetClient } from '../net/client';
+import { planet1Config } from '../planets/planet1';
 
 export class LobbyScene extends Phaser.Scene {
   private net!: GameNetClient;
@@ -63,7 +64,11 @@ export class LobbyScene extends Phaser.Scene {
         this.statusText.setText('Phone connected — starting…');
         this.statusText.setColor('#98ffc8');
         this.time.delayedCall(900, () => {
-          this.scene.start('Level', { net: this.net });
+          this.scene.start('Planet', {
+            net: this.net,
+            config: planet1Config,
+            unlockedPlanets: new Set(['planet-1']),
+          });
         });
       } else if (msg.type === 'error') {
         this.statusText.setText(`Error: ${msg.message}`);
