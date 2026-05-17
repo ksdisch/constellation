@@ -19,7 +19,11 @@ export class BootScene extends Phaser.Scene {
     if (isSolo) {
       const net = new GameNetClient();
       // Do not call net.connect() — solo mode bypasses the relay entirely.
-      this.scene.start('Level', { net, solo: true });
+      this.scene.start('Hub', {
+        net,
+        solo: true,
+        unlockedPlanets: new Set(['planet-1']),
+      });
     } else {
       this.scene.start('Lobby');
     }

@@ -3,21 +3,14 @@ import { Astronaut } from '../entities/Astronaut';
 import { Enemy } from '../entities/Enemy';
 import type { GameNetClient } from '../net/client';
 import type { PowerId } from '../../shared/protocol';
+import type { PlanetConfig } from '../planets/planet1';
 
-const SPAWN = { x: 80, y: 440 };
 const FREEZE_DURATION_MS = 3000;
-const CORRIDOR_X = 420;
-const PIT = { startX: 660, endX: 880 };
-const GOAL_POS = { x: 920, y: 300 };
-const PLATFORM_POS = { x: 770, y: 460 };
 const PLATFORM_LIFETIME_MS = 5000;
 const PLATFORM_FADE_OUT_MS = 800;
-const HIDDEN_PLATFORM_POS = { x: 920, y: 420 };
-const DARK_ZONE = { x: 920, y: 420, width: 160, height: 100 };
 const DARK_ZONE_FADE_MS = 800;
-const FALL_RESPAWN_Y = 600;
 
-export class LevelScene extends Phaser.Scene {
+export class PlanetScene extends Phaser.Scene {
   private astronaut!: Astronaut;
   private enemy!: Enemy;
   private platforms!: Phaser.Physics.Arcade.StaticGroup;
@@ -26,43 +19,47 @@ export class LevelScene extends Phaser.Scene {
   private net!: GameNetClient;
   private won = false;
   private solo = false;
+  private config!: PlanetConfig;
+  private unlockedPlanets: Set<string> = new Set();
 
   constructor() {
-    super({ key: 'Level' });
+    super({ key: 'Planet' });
   }
 
-  init(data: { net: GameNetClient; solo?: boolean }) {
+  init(data: { net: GameNetClient; config: PlanetConfig; solo?: boolean; unlockedPlanets?: Set<string> }) {
     this.net = data.net;
+    this.config = data.config;
     this.solo = data.solo ?? false;
+    this.unlockedPlanets = data.unlockedPlanets ?? new Set();
     this.won = false;
   }
 
   create() {
     const ground = this.physics.add.staticGroup();
     for (let x = 32; x < 960; x += 64) {
-      if (x >= PIT.startX && x < PIT.endX) continue;
+      if (x >= this.config.pit.startX && x < this.config.pit.endX) continue;
       ground.create(x, 520, 'ground');
     }
 
     const ceiling = this.physics.add.staticGroup();
-    ceiling.create(CORRIDOR_X, 360, 'ceiling');
+    ceiling.create(this.config.corridor.x, 360, 'ceiling');
 
     this.platforms = this.physics.add.staticGroup();
 
     this.hiddenPlatforms = this.physics.add.staticGroup();
     const hiddenPlatform = this.hiddenPlatforms.create(
-      HIDDEN_PLATFORM_POS.x,
-      HIDDEN_PLATFORM_POS.y,
+      this.config.hiddenPlatform.x,
+      this.config.hiddenPlatform.y,
       'hidden-platform',
     ) as Phaser.Physics.Arcade.Sprite;
     hiddenPlatform.refreshBody();
 
     this.darkZone = this.add
-      .rectangle(DARK_ZONE.x, DARK_ZONE.y, DARK_ZONE.width, DARK_ZONE.height, 0x000000, 1)
+      .rectangle(this.config.darkZone.x, this.config.darkZone.y, this.config.darkZone.width, this.config.darkZone.height, 0x000000, 1)
       .setDepth(50);
 
     this.add
-      .text(480, 60, 'Constellation', {
+      .text(480, 60, this.config.name, {
         fontFamily: 'system-ui, sans-serif',
         fontSize: '22px',
         color: '#ffffff',
@@ -70,7 +67,7 @@ export class LevelScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.add
-      .text(480, 88, 'Freeze her past the plasma column, bridge the chasm, then illuminate the hidden path.', {
+      .text(480, 88, this.config.hint, {
         fontFamily: 'system-ui, sans-serif',
         fontSize: '14px',
         color: '#a8b0d8',
@@ -108,13 +105,13 @@ export class LevelScene extends Phaser.Scene {
       this.input.keyboard!.on('keydown-THREE', () => this.castPower('illuminate'));
     }
 
-    this.astronaut = new Astronaut(this, SPAWN.x, SPAWN.y);
+    this.astronaut = new Astronaut(this, this.config.spawn.x, this.config.spawn.y);
     this.physics.add.collider(this.astronaut.sprite, ground);
     this.physics.add.collider(this.astronaut.sprite, ceiling);
     this.physics.add.collider(this.astronaut.sprite, this.platforms);
     this.physics.add.collider(this.astronaut.sprite, this.hiddenPlatforms);
 
-    this.enemy = new Enemy(this, CORRIDOR_X, 435);
+    this.enemy = new Enemy(this, this.config.corridor.x, 435);
     this.physics.add.collider(this.enemy.sprite, ground);
 
     this.physics.add.overlap(this.astronaut.sprite, this.enemy.sprite, () => {
@@ -122,10 +119,10 @@ export class LevelScene extends Phaser.Scene {
       this.resetAstronaut();
     });
 
-    const goal = this.physics.add.staticSprite(GOAL_POS.x, GOAL_POS.y, 'goal');
+    const goal = this.physics.add.staticSprite(this.config.goal.x, this.config.goal.y, 'goal');
     this.tweens.add({
       targets: goal,
-      y: GOAL_POS.y - 8,
+      y: this.config.goal.y - 8,
       yoyo: true,
       repeat: -1,
       duration: 900,
@@ -138,7 +135,7 @@ export class LevelScene extends Phaser.Scene {
 
   update() {
     if (this.won) return;
-    if (this.astronaut.sprite.y > FALL_RESPAWN_Y) {
+    if (this.astronaut.sprite.y > this.config.fallRespawnY) {
       this.resetAstronaut();
       return;
     }
@@ -184,7 +181,7 @@ export class LevelScene extends Phaser.Scene {
   }
 
   private summonPlatform() {
-    const sprite = this.platforms.create(PLATFORM_POS.x, PLATFORM_POS.y, 'platform') as Phaser.Physics.Arcade.Sprite;
+    const sprite = this.platforms.create(this.config.platformDrop.x, this.config.platformDrop.y, 'platform') as Phaser.Physics.Arcade.Sprite;
     sprite.setAlpha(0);
     sprite.refreshBody();
     this.tweens.add({ targets: sprite, alpha: 1, duration: 200 });
@@ -200,7 +197,7 @@ export class LevelScene extends Phaser.Scene {
 
   private resetAstronaut() {
     const body = this.astronaut.sprite.body as Phaser.Physics.Arcade.Body;
-    this.astronaut.sprite.setPosition(SPAWN.x, SPAWN.y);
+    this.astronaut.sprite.setPosition(this.config.spawn.x, this.config.spawn.y);
     body.setVelocity(0, 0);
     this.astronaut.sprite.setTint(0xff6b9d);
     this.time.delayedCall(180, () => this.astronaut.sprite.clearTint());
@@ -242,12 +239,13 @@ export class LevelScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
+    // "Play again" — left button, mint green
     const restartButton = this.add
-      .rectangle(480, 310, 180, 48, 0x98ffc8)
+      .rectangle(380, 310, 180, 48, 0x98ffc8)
       .setStrokeStyle(2, 0xffffff, 0.4)
       .setInteractive({ useHandCursor: true });
     this.add
-      .text(480, 310, 'Play again', {
+      .text(380, 310, 'Play again', {
         fontFamily: 'system-ui, sans-serif',
         fontSize: '18px',
         color: '#1a1b3a',
@@ -255,6 +253,31 @@ export class LevelScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    restartButton.on('pointerdown', () => this.scene.restart({ net: this.net, solo: this.solo }));
+    restartButton.on('pointerdown', () => this.scene.restart({
+      net: this.net,
+      config: this.config,
+      solo: this.solo,
+      unlockedPlanets: this.unlockedPlanets,
+    }));
+
+    // "Return to Hub" — right button, slate
+    const hubButton = this.add
+      .rectangle(580, 310, 180, 48, 0xa8b0d8)
+      .setStrokeStyle(2, 0xffffff, 0.4)
+      .setInteractive({ useHandCursor: true });
+    this.add
+      .text(580, 310, 'Return to Hub', {
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: '18px',
+        color: '#1a1b3a',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5);
+
+    hubButton.on('pointerdown', () => this.scene.start('Hub', {
+      net: this.net,
+      solo: this.solo,
+      unlockedPlanets: this.unlockedPlanets,
+    }));
   }
 }
