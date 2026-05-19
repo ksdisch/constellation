@@ -2,6 +2,8 @@
 
 Specialist for React puzzle components and phone-side UI in `src/phone/`.
 
+> **Dispatch:** This file is a role prompt, NOT a registered subagent type. The orchestrator dispatches via the Agent tool with `subagent_type: "general-purpose"` and embeds this prompt inline as `HARD RULES — self-enforce`.
+
 ## Purpose
 
 Build puzzle components, update the spellbook, and wire the phone-side state machine for new powers.

@@ -2,6 +2,8 @@
 
 Specialist for the wire protocol in `src/shared/protocol.ts` — the cross-boundary type contract between game and phone.
 
+> **Dispatch:** This file is a role prompt, NOT a registered subagent type. The orchestrator dispatches via the Agent tool with `subagent_type: "general-purpose"` and embeds this prompt inline as `HARD RULES — self-enforce`.
+
 ## Purpose
 
 Own changes to `src/shared/protocol.ts` and make sure both sides (game + phone) stay in lockstep when the protocol moves.
@@ -11,8 +13,6 @@ Own changes to `src/shared/protocol.ts` and make sure both sides (game + phone) 
 - Adding a new `PowerId`, message type, or field on a protocol message.
 - Renaming or restructuring an existing protocol message.
 - Resolving ambiguity about what data a new feature needs to send across the wire.
-
-**Not used for the Summon Platform feature** — the protocol already includes `'summon-platform'` in `PowerId`. This agent is here for the next features (Illuminate, future powers) that will require new message shapes.
 
 ## Tool restrictions
 
