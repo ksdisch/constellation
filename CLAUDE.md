@@ -67,3 +67,34 @@ chore(m0): scaffold Vite + Phaser + React skeleton
 ## Orchestrator-worker pattern
 
 This repo uses an orchestrator-worker workflow for non-trivial features. See `.claude/orchestrator.md` for invariants, gates, and operating modes (autonomous vs. high-oversight dispatch); `.claude/agents/` for specialist role prompts; and `.claude/templates/phase-brief.md` for the per-phase brief format. `.claude/orchestrator-prompt.md` is the historical M4 per-scope brief — kept for reference.
+
+## Claude tooling for this repo
+
+Repo-local Claude Code slash commands (`.claude/commands/`) and skills (`.claude/skills/`), vendored so they work in cloud/web sessions and for collaborators. Items marked 💻 **local-only** need local tools (browser MCP, a running dev server, screenshots) and will NOT run in a cloud/web session.
+
+**Commands**
+
+- `/begin` — open a session: orient on branch/commits/open PRs, recap the last `/wrap` log, route into the session-start spec.
+- `/wrap` — end-of-session recap: explains the why, builds vocab, active-recall quiz, saves a dated log.
+- `/handoff` — generate a paste-able handoff prompt for a fresh session; captures lessons + plan state.
+- `/trim-context` — find/fix CLAUDE.md & memory token bloat against the 40k limit; auto-applies fixes.
+- `/autonomous-milestone` — autonomously plan/build/test/verify a milestone end-to-end (fits the M0–M6 + orchestrator workflow); uses ultracode multi-agent orchestration. Browser-based verification is optional — the headless `?test=1` bridge covers it.
+- `/explore-plan` — explore → plan → confirm before any code; proposes 2–3 ranked approaches and waits for a pick.
+- `/tdd` — test-first loop: write failing tests, confirm they fail for the right reason, then code until green without editing the tests.
+- 💻 `/screenshot-iterate` — **local-only** visual loop: implement → screenshot the running app → compare to a mock → iterate.
+
+**Skills** (auto-trigger by description, or invoke explicitly)
+
+- `new-power` — scaffold a new astronaut power across every side of the power contract (protocol `PowerId` → Spellbook tile → puzzle component cloned from `QuickMath.tsx` → `App.tsx` `FEEDBACK` + render chain → `castPower()` switch in `Planet.ts`). Invoke with `/new-power` after the power is designed. *Repo-specific (built here).*
+- 💻 `match-the-mock` — **local-only**: implement a UI against a mock/Figma and iterate via screenshots until it matches. Auto-triggering sibling of `/screenshot-iterate`.
+
+**Subagents** (role prompts in `.claude/agents/` — dispatched inline via `subagent_type: "general-purpose"`, NOT registered subagent types; see the file header)
+
+- `power-contract-reviewer` — read-only audit of a diff for the power contract + wire-protocol boundary; PASS/FAIL with `file:line` evidence. Catches the two sides the compiler does *not* guard (the Spellbook tile and the `App.tsx` render `if`-chain). *Repo-specific (built here).*
+
+**Hooks** (`.claude/settings.json` → scripts in `.claude/hooks/`, shared with collaborators)
+
+- `protocol-boundary-guard` (PreToolUse) — non-blocking reminder when `src/shared/protocol.ts` is edited: update both clients in the same commit; wire the full power contract.
+- `typecheck-on-edit` (PostToolUse) — runs `tsc --noEmit` after `*.ts/*.tsx` edits and feeds errors back (blocking; flip the trailing `exit 2`→`exit 0` in the script to make it advisory).
+
+To vendor more of your global commands/skills or brainstorm new repo-specific automations, run `/claudify-repo`.
