@@ -16,6 +16,7 @@ const EVENTS: JuiceEvent[] = [
   'illuminate',
   'death',
   'win',
+  'phase-dash',
 ];
 
 describe('EFFECTS table', () => {

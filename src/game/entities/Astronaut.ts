@@ -14,6 +14,9 @@ export class Astronaut {
   private readonly keys: InputKeys;
   private readonly speed = 240;
   private readonly jumpVelocity = -460;
+  // Temporary horizontal-speed scale (1 = normal). Phase Dash boosts this for a
+  // short window so the cast reads as a dash; reset back to 1 by the scene.
+  private speedMultiplier = 1;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     this.sprite = scene.physics.add.sprite(x, y, 'astronaut');
@@ -38,13 +41,19 @@ export class Astronaut {
       this.cursors.space?.isDown ||
       (t?.jump ?? false);
 
-    if (left) body.setVelocityX(-this.speed);
-    else if (right) body.setVelocityX(this.speed);
+    const speed = this.speed * this.speedMultiplier;
+    if (left) body.setVelocityX(-speed);
+    else if (right) body.setVelocityX(speed);
     else body.setVelocityX(0);
 
     if (jumpPressed && body.blocked.down) {
       body.setVelocityY(this.jumpVelocity);
       playCue('jump');
     }
+  }
+
+  /** Scale movement speed (1 = normal). Used by Phase Dash's brief dash boost. */
+  setSpeedMultiplier(multiplier: number): void {
+    this.speedMultiplier = multiplier;
   }
 }

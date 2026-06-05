@@ -1,32 +1,24 @@
 import type { PowerId } from '../../shared/protocol';
 
-interface Power {
-  id: PowerId;
+interface PowerTile {
   label: string;
   subtitle: string;
   accent: string;
 }
 
-const POWERS: Power[] = [
-  {
-    id: 'freeze-stars',
-    label: 'Freeze Stars',
-    subtitle: 'Quick Math — 3 problems in 30s',
-    accent: '#7ad8ff',
-  },
-  {
-    id: 'summon-platform',
-    label: 'Summon Platform',
-    subtitle: 'Tap Sequence — repeat 5 lights',
-    accent: '#9a7aff',
-  },
-  {
-    id: 'illuminate',
-    label: 'Illuminate',
-    subtitle: 'Trivia — 3 questions in 30s',
-    accent: '#f6c971',
-  },
-];
+type Power = { id: PowerId } & PowerTile;
+
+// Keyed by PowerId so every power MUST have a tile — a missing one is a COMPILE
+// error (the same exhaustiveness guarantee as App.tsx's puzzle router). Object
+// insertion order is the menu order.
+const POWER_TILES: Record<PowerId, PowerTile> = {
+  'freeze-stars': { label: 'Freeze Stars', subtitle: 'Quick Math — 3 problems in 30s', accent: '#7ad8ff' },
+  'summon-platform': { label: 'Summon Platform', subtitle: 'Tap Sequence — repeat 5 lights', accent: '#9a7aff' },
+  'illuminate': { label: 'Illuminate', subtitle: 'Trivia — 3 questions in 30s', accent: '#f6c971' },
+  'phase-dash': { label: 'Phase Dash', subtitle: 'Phase Align — line up the dials', accent: '#5eead4' },
+};
+
+const POWERS: Power[] = (Object.keys(POWER_TILES) as PowerId[]).map((id) => ({ id, ...POWER_TILES[id] }));
 
 interface Props {
   onPick: (id: PowerId) => void;

@@ -26,6 +26,7 @@ const CUE_NAMES: CueName[] = [
   'illuminate',
   'death',
   'win',
+  'phase',
 ];
 
 class MockSink implements AudioSink {

@@ -1,4 +1,4 @@
-export type PowerId = 'freeze-stars' | 'summon-platform' | 'illuminate';
+export type PowerId = 'freeze-stars' | 'summon-platform' | 'illuminate' | 'phase-dash';
 
 export type ClientToServerMsg =
   | { type: 'create-room'; role: 'game' }

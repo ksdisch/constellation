@@ -19,12 +19,6 @@ Pick items with the `project-backlog` skill in Claude Code.
 - **Size:** S
 - **Added:** 2026-05-12
 
-### [Feature] Planet 3 — library theme with themed puzzle/power variant
-- **Why:** M4. Second themed planet. Together with ice planet, validates whether 5–10 planets is realistic or if scope needs to shrink.
-- **Acceptance:** Third playable level with library/book tileset, mechanic distinct from Planets 1 and 2, and a themed puzzle variant (e.g. Wordle-like for Illuminate, since reading fits the theme).
-- **Size:** L
-- **Added:** 2026-05-12
-
 ### [Feature] Polish pass — remainder: music + camera feel
 - **Why:** M5. The SFX/particles/screen-shake/win-beat slice shipped (see Done: "Juice layer"); what remains of the original polish pass is **background music** (Incompetech/OpenGameArt loops, different tracks on hub vs. levels) and **camera feel** (a camera that lerps to follow the astronaut instead of being static). Music likely needs a small audio-asset decision (the stack is otherwise asset-free); camera-follow is pure Phaser.
 - **Acceptance:** Background music loops on the hub and during levels (different tracks). Camera lerps to follow the astronaut. Subjective bar: "feels juicy" — building on the existing SFX/particle/shake layer.
@@ -59,6 +53,14 @@ Pick items with the `project-backlog` skill in Claude Code.
 ---
 
 ## Done
+
+### [Feature] Planet 3 "Nebula Core" + Phase Dash — the 4th power
+- **Why:** M6. Closes the planet-2 → "Coming soon" dead-end (a visible broken promise) **and** the mechanical gap (every planet was a reskin of the same three powers). The real win is proving the rigid `PlanetConfig` + the `castPower` exhaustiveness guard — both designed for exactly three powers — actually extend to a fourth.
+- **Acceptance:** Third playable, themed level (NEBULA palette) with a mechanic distinct from Planets 1 & 2 — a genuinely new 4th power, **Phase Dash**, not just a puzzle reskin. Phase Dash is wired all four sides (`PowerId`, Spellbook tile, `PhaseAlign` puzzle, `castPower` case), is physically load-bearing (a full-height "plasma curtain" hazard), and rides an opt-in `PlanetConfig.hazardLane?` field mirroring how `theme?` was added. Goes beyond the original "themed puzzle variant" ask.
+- **Size:** L
+- **Added:** 2026-05-12 (as "Planet 3 — library theme")
+- **Completed:** 2026-06-05
+- **Note:** Built by the `/autonomous-milestone` workflow (brainstorm v3 runner-up, 8.2). **Phase Dash** = a 2.5s phase-invulnerability *window* vs. the hazard lane (a calm walk-through, not a reaction — deliberately cozy/no-twitch) + a brief ~350ms dash speed-boost. The curtain is un-passable by *tallness* (a running jump can't clear it or rise above it), so there's no reach-math soft-lock. New `src/phone/components/puzzles/PhaseAlign.tsx` (rotate-the-dials-to-align — a new interaction class) + `src/game/planets/planet3.ts`. **Nebula Core deliberately gates on three powers** (Freeze → Phase → Illuminate), not four: a second un-jumpable obstacle (a ≥260px pit) won't fit 960px without unplayable spacing, so the pit is degenerate and Summon Platform is an optional flourish — each planet now emphasizes a different subset. Landed the **App.tsx puzzle-router exhaustiveness fix** first (the hard prereq — a 4th power would otherwise render a blank phone puzzle), and made Spellbook exhaustive too. Live-verified at `?solo=1&test=1` (Phase Dash load-bearing negative + positive, full planet-3 clear, Illuminate flip, Freeze regression, planet-1 clear) **and** via a two-client handshake (phone solves Phase Align → relay → game casts phase-dash). Adversarial multi-agent review (7 findings) addressed. Documented in `docs/AUTONOMY.md`.
 
 ### [Feature] Juice layer — procedural SFX + screen shake + particle bursts + win beat
 - **Why:** M5. The first "show your friends" polish: the three powers cast in silence with no feedback beyond a text banner. This makes them *feel* powerful and turns the prototype tactile — the largest perceived-quality jump per line, with zero new dependency and zero asset files.

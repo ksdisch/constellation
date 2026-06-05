@@ -14,6 +14,13 @@ const FREEZE_DURATION_MS = 3000;
 const PLATFORM_LIFETIME_MS = 5000;
 const PLATFORM_FADE_OUT_MS = 800;
 const DARK_ZONE_FADE_MS = 800;
+// Phase Dash: an invulnerability WINDOW vs. the hazard lane (the load-bearing
+// part — a calm walk-through, not a reaction), plus a brief dash speed boost so
+// the cast reads as a dash. Teal matches the power's phone accent.
+const PHASE_DURATION_MS = 2500;
+const PHASE_DASH_BOOST_MS = 350;
+const PHASE_DASH_SPEED_MULTIPLIER = 1.9;
+const HAZARD_COLOR = 0x5eead4;
 
 export class PlanetScene extends Phaser.Scene {
   private astronaut!: Astronaut;
@@ -26,8 +33,13 @@ export class PlanetScene extends Phaser.Scene {
   private solo = false;
   private config!: PlanetConfig;
   private juice!: JuiceController;
-  // Counts respawns (pit-fall or enemy hit) for the test bridge snapshot.
+  // Counts respawns (pit-fall, enemy hit, or un-phased hazard contact) for the
+  // test bridge snapshot.
   private respawnCount = 0;
+  // Phase Dash window state. phaseActive gates the hazard-lane respawn; phaseToken
+  // lets a re-cast supersede a prior window's expiry callback cleanly.
+  private phaseActive = false;
+  private phaseToken = 0;
 
   constructor() {
     super({ key: 'Planet' });
@@ -52,6 +64,7 @@ export class PlanetScene extends Phaser.Scene {
     this.solo = data.solo ?? false;
     this.won = false;
     this.respawnCount = 0;
+    this.phaseActive = false;
     // Drop any cue recorded by a prior run so the bridge starts clean (keeps the
     // audio context alive — see resetLastCue vs resetAudio).
     resetLastCue();
@@ -133,7 +146,7 @@ export class PlanetScene extends Phaser.Scene {
 
     if (this.solo) {
       this.add
-        .text(14, 14, 'SOLO  [1] freeze  [2] platform  [3] illuminate', {
+        .text(14, 14, 'SOLO  [1] freeze  [2] platform  [3] illuminate  [4] phase', {
           fontFamily: 'system-ui, sans-serif',
           fontSize: '12px',
           color: '#f6c971',
@@ -142,6 +155,7 @@ export class PlanetScene extends Phaser.Scene {
       this.input.keyboard!.on('keydown-ONE', () => this.castPower('freeze-stars'));
       this.input.keyboard!.on('keydown-TWO', () => this.castPower('summon-platform'));
       this.input.keyboard!.on('keydown-THREE', () => this.castPower('illuminate'));
+      this.input.keyboard!.on('keydown-FOUR', () => this.castPower('phase-dash'));
     }
 
     this.astronaut = new Astronaut(this, this.config.spawn.x, this.config.spawn.y);
@@ -157,6 +171,31 @@ export class PlanetScene extends Phaser.Scene {
       if (this.enemy.isFrozen || this.won) return;
       this.resetAstronaut();
     });
+
+    // Opt-in Phase Dash hazard: a full-height "plasma curtain" (tall enough that
+    // a running jump can neither clear it horizontally nor get above it, so it is
+    // robustly un-passable without phasing — no reach-math soft-lock). A static
+    // body backs a translucent Rectangle; contact respawns UNLESS phaseActive.
+    if (this.config.hazardLane) {
+      const h = this.config.hazardLane;
+      const hazard = this.add
+        .rectangle(h.x, h.y, h.width, h.height, HAZARD_COLOR, 0.32)
+        .setStrokeStyle(2, HAZARD_COLOR, 0.85)
+        .setDepth(40);
+      this.physics.add.existing(hazard, true);
+      this.physics.add.overlap(this.astronaut.sprite, hazard, () => {
+        if (!this.phaseActive && !this.won) this.resetAstronaut();
+      });
+      // Gentle plasma pulse so the curtain reads as live energy, not a wall.
+      this.tweens.add({
+        targets: hazard,
+        alpha: { from: 0.32, to: 0.52 },
+        duration: 700,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    }
 
     const goal = this.physics.add.staticSprite(this.config.goal.x, this.config.goal.y, this.tex('goal'));
     this.tweens.add({
@@ -187,6 +226,7 @@ export class PlanetScene extends Phaser.Scene {
             respawnCount: this.respawnCount,
             platformCount: this.platforms.getChildren().length,
             darkZonePresent: this.darkZone !== null,
+            phaseActive: this.phaseActive,
             unlockedPlanets: progress.unlockedPlanets,
             completed: progress.completed,
             lastSfxCue: getLastCue(),
@@ -227,6 +267,11 @@ export class PlanetScene extends Phaser.Scene {
       case 'illuminate':
         this.illuminate();
         break;
+      case 'phase-dash':
+        this.activatePhase();
+        this.juice.trigger('phase-dash', this.astronaut.sprite.x, this.astronaut.sprite.y);
+        this.flashBanner('PHASE!', '#5eead4');
+        break;
       default: {
         const _exhaustive: never = powerId;
         void _exhaustive;
@@ -248,6 +293,29 @@ export class PlanetScene extends Phaser.Scene {
       alpha: 0,
       duration: DARK_ZONE_FADE_MS,
       onComplete: () => zone.destroy(),
+    });
+  }
+
+  /**
+   * Phase Dash: open an immunity window vs. the hazard lane and apply a brief
+   * forward dash boost. A re-cast bumps phaseToken so an in-flight expiry
+   * callback from the prior window can't end the new one early.
+   */
+  private activatePhase() {
+    this.phaseActive = true;
+    this.astronaut.setSpeedMultiplier(PHASE_DASH_SPEED_MULTIPLIER);
+    this.astronaut.sprite.setTint(HAZARD_COLOR).setAlpha(0.55);
+    const token = ++this.phaseToken;
+    // The dash boost is short; the immunity window outlasts it so a calm
+    // walk-through is never punished.
+    this.time.delayedCall(PHASE_DASH_BOOST_MS, () => {
+      if (token === this.phaseToken) this.astronaut.setSpeedMultiplier(1);
+    });
+    this.time.delayedCall(PHASE_DURATION_MS, () => {
+      if (token !== this.phaseToken) return; // superseded by a newer cast
+      this.phaseActive = false;
+      this.astronaut.setSpeedMultiplier(1);
+      this.astronaut.sprite.clearTint().setAlpha(1);
     });
   }
 
@@ -285,6 +353,16 @@ export class PlanetScene extends Phaser.Scene {
 
   private resetAstronaut() {
     this.respawnCount += 1;
+    // A death cancels any active Phase Dash: drop the immunity + speed boost and
+    // the translucent phase look so the respawn is clean. Bumping phaseToken
+    // supersedes the old window's pending expiry/boost callbacks (else a stale
+    // 2.5s timer would later re-touch the freshly respawned sprite).
+    if (this.phaseActive) {
+      this.phaseActive = false;
+      this.phaseToken++;
+      this.astronaut.setSpeedMultiplier(1);
+    }
+    this.astronaut.sprite.setAlpha(1);
     const body = this.astronaut.sprite.body as Phaser.Physics.Arcade.Body;
     // Death juice at the point of failure. Clamp the burst into the visible band
     // so a pit fall (astronaut below the 540 canvas, the most common death) still

@@ -1,9 +1,11 @@
 import { useState, useRef, useCallback } from 'react';
+import type { ReactElement } from 'react';
 import { RoomJoin } from './components/RoomJoin';
 import { Spellbook } from './components/Spellbook';
 import { QuickMath } from './components/puzzles/QuickMath';
 import { TapSequence } from './components/puzzles/TapSequence';
 import { Trivia } from './components/puzzles/Trivia';
+import { PhaseAlign } from './components/puzzles/PhaseAlign';
 import { PhoneNetClient } from './net/client';
 import type { PowerId } from '../shared/protocol';
 
@@ -11,7 +13,24 @@ const FEEDBACK: Record<PowerId, { title: string; color: string; sub: string }> =
   'freeze-stars': { title: 'Cast!', color: '#7ad8ff', sub: 'Freeze Stars — enemies cold for 3s.' },
   'summon-platform': { title: 'Cast!', color: '#9a7aff', sub: 'Platform — bridge holds for 5s.' },
   'illuminate': { title: 'Cast!', color: '#f6c971', sub: 'Illuminate — dark zone revealed.' },
+  'phase-dash': { title: 'Cast!', color: '#5eead4', sub: 'Phase Dash — slip through the plasma for 2.5s.' },
 };
+
+/** Props every puzzle component accepts (some also take optional difficulty props). */
+type PuzzleProps = { onSolved: () => void; onCancel: () => void };
+
+/**
+ * Exhaustive puzzle router, keyed by PowerId. `satisfies Record<PowerId, …>`
+ * makes a missing power a COMPILE error — adding a 4th PowerId without a phone
+ * puzzle no longer silently renders a blank screen (the old if-chain's
+ * `return null` fallthrough).
+ */
+const PUZZLES = {
+  'freeze-stars': (p: PuzzleProps) => <QuickMath {...p} />,
+  'summon-platform': (p: PuzzleProps) => <TapSequence {...p} />,
+  'illuminate': (p: PuzzleProps) => <Trivia {...p} />,
+  'phase-dash': (p: PuzzleProps) => <PhaseAlign {...p} />,
+} satisfies Record<PowerId, (p: PuzzleProps) => ReactElement>;
 
 type Phase =
   | { kind: 'idle' }
@@ -134,16 +153,7 @@ function renderPhase(
     );
   }
   if (phase.kind === 'puzzle') {
-    if (phase.power === 'freeze-stars') {
-      return <QuickMath onSolved={actions.onSolved} onCancel={actions.onCancel} />;
-    }
-    if (phase.power === 'summon-platform') {
-      return <TapSequence onSolved={actions.onSolved} onCancel={actions.onCancel} />;
-    }
-    if (phase.power === 'illuminate') {
-      return <Trivia onSolved={actions.onSolved} onCancel={actions.onCancel} />;
-    }
-    return null;
+    return PUZZLES[phase.power]({ onSolved: actions.onSolved, onCancel: actions.onCancel });
   }
   // cast-feedback
   const f = FEEDBACK[phase.power];
