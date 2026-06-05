@@ -3,6 +3,7 @@ import type { GameNetClient } from '../net/client';
 import { PLANETS, type PlanetRegistryEntry } from '../planets/registry';
 import { loadProgress } from '../progression/save';
 import { nodeStateFor } from '../progression/nodeStateFor';
+import { isTestMode, setBridgeProviders } from '../testBridge';
 
 type Star = { x: number; y: number; r: number; alpha: number };
 
@@ -92,6 +93,24 @@ export class HubScene extends Phaser.Scene {
     PLANETS.forEach((entry, index) => {
       this.renderNode(entry, index, nodeStateFor(progress, entry.id));
     });
+
+    // Test-bridge navigation (no-op unless ?test=1): launch a planet by id,
+    // mirroring the node-click launch contract for entries that have a config.
+    if (isTestMode()) {
+      setBridgeProviders({
+        startPlanet: (id) => {
+          const e = PLANETS.find((x) => x.id === id);
+          if (e?.config) {
+            this.scene.start('Planet', {
+              net: this.net,
+              config: e.config,
+              solo: this.solo,
+              unlockedPlanets: new Set(this.unlockedPlanets),
+            });
+          }
+        },
+      });
+    }
   }
 
   /** Even horizontal spread across the canvas for N nodes. */

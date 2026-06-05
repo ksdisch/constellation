@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { GameNetClient } from '../net/client';
 import { loadProgress } from '../progression/save';
+import { PLANETS } from '../planets/registry';
+import { ensureBridge } from '../testBridge';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -8,6 +10,10 @@ export class BootScene extends Phaser.Scene {
   }
 
   create() {
+    // Install the flag-gated test bridge (no-op unless ?test=1). Runs for both
+    // solo and normal entry, before any scene that wires providers into it.
+    ensureBridge();
+
     this.makeSolidTexture('astronaut', 32, 48, 0xffd166);
     this.makeSolidTexture('ground', 64, 40, 0x4a5888);
     this.makeSolidTexture('ceiling', 400, 20, 0x2a3a6a);
@@ -15,6 +21,22 @@ export class BootScene extends Phaser.Scene {
     this.makeSolidTexture('goal', 28, 28, 0xffef7a);
     this.makeSolidTexture('platform', 96, 14, 0x9a7aff);
     this.makeSolidTexture('hidden-platform', 120, 16, 0x4a5888);
+
+    // Per-theme textures for any registered planet that opts into a theme.
+    // Generated at the SAME sizes as the defaults above, keyed `<key>-<id>`.
+    // The default textures are left untouched, so planet-1 (no theme) is
+    // pixel-identical. Planet.tex() resolves to these keys when a theme is set.
+    for (const entry of PLANETS) {
+      const theme = entry.config?.theme;
+      if (!theme) continue;
+      const id = entry.id;
+      this.makeSolidTexture(`ground-${id}`, 64, 40, theme.ground);
+      this.makeSolidTexture(`ceiling-${id}`, 400, 20, theme.ceiling);
+      this.makeSolidTexture(`enemy-${id}`, 32, 130, theme.enemy);
+      this.makeSolidTexture(`goal-${id}`, 28, 28, theme.goal);
+      this.makeSolidTexture(`platform-${id}`, 96, 14, theme.platform);
+      this.makeSolidTexture(`hidden-platform-${id}`, 120, 16, theme.hiddenPlatform);
+    }
 
     const isSolo = new URLSearchParams(window.location.search).get('solo') === '1';
     if (isSolo) {

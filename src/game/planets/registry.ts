@@ -1,5 +1,6 @@
 import type { PlanetConfig } from './planet1';
 import { planet1Config } from './planet1';
+import { planet2Config } from './planet2';
 
 /**
  * One entry in the ordered planet chain.
@@ -20,10 +21,10 @@ export type PlanetRegistryEntry = {
  * planet at index N unlocks the planet at index N+1. Reordering this array
  * reorders the unlock chain, so treat the order as a design contract.
  *
- * planet-2 and planet-3 are intentionally config-less stubs for now.
+ * planet-3 is intentionally a config-less stub for now.
  */
 export const PLANETS: readonly PlanetRegistryEntry[] = [
   { id: 'planet-1', label: 'Constellation', config: planet1Config },
-  { id: 'planet-2', label: 'Stellar Winds' },
+  { id: 'planet-2', label: 'Stellar Winds', config: planet2Config },
   { id: 'planet-3', label: 'Nebula Core' },
 ];
