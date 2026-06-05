@@ -20,9 +20,11 @@ npm run dev              # vite + relay concurrently (game on :5180, ws on :3081
 npm run typecheck        # tsc --noEmit
 npm run build            # tsc && vite build
 npm run preview          # preview built bundle
+npm run test             # vitest run (pure-logic unit tests)
+npm run test:watch       # vitest in watch mode
 ```
 
-Vite binds to `0.0.0.0`; the printed LAN URL is what the phone uses on the same wifi. No automated tests yet — playtest is the integration gate.
+Vite binds to `0.0.0.0`; the printed LAN URL is what the phone uses on the same wifi. Playtest remains the integration gate for game feel; Vitest covers pure, framework-free logic (e.g. the progression/persistence module).
 
 ## Conventions
 
@@ -41,7 +43,7 @@ Vite binds to `0.0.0.0`; the printed LAN URL is what the phone uses on the same 
 - **Don't** put game logic in the relay server.
 - **Don't** introduce new dependencies casually. The stack is locked: Phaser, React, ws, Vite, tsx, TypeScript. Adding anything else is a real decision.
 - **Don't** add CSS files, frameworks, or imports of style files.
-- **Don't** add tests yet. The playtest gate (M2 "is it fun?") is the project's stated integration test. When tests are introduced, this section will be revised.
+- **Do** test pure logic with Vitest (jsdom env, configured in `vitest.config.ts`). Vitest is now a sanctioned dev dependency. Keep tests on framework-free, deterministic units — colocated `*.test.ts` next to the module (see `src/game/progression/`). Don't instantiate Phaser scenes or React components in tests; the playtest gate (M2 "is it fun?") and `npm run typecheck` / `npm run build` cover the framework wiring.
 - **Don't** break Freeze Stars when adding new powers. Manually smoke-test it after touching anything in `Spellbook.tsx`, `App.tsx`, or `Level.ts`.
 
 ## Commit style

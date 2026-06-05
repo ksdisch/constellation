@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GameNetClient } from '../net/client';
+import { loadProgress } from '../progression/save';
 
 export class LobbyScene extends Phaser.Scene {
   private net!: GameNetClient;
@@ -66,7 +67,9 @@ export class LobbyScene extends Phaser.Scene {
           this.scene.start('Hub', {
             net: this.net,
             solo: false,
-            unlockedPlanets: new Set(['planet-1']),
+            // Honor durable progression in multiplayer too — mirror Boot.ts so
+            // a planet completed solo stays unlocked when playing co-op.
+            unlockedPlanets: new Set(loadProgress().unlockedPlanets),
           });
         });
       } else if (msg.type === 'error') {
