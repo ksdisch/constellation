@@ -19,12 +19,6 @@ Pick items with the `project-backlog` skill in Claude Code.
 - **Size:** S
 - **Added:** 2026-05-12
 
-### [Feature] Galaxy hub scene with planet nodes
-- **Why:** M4 in the plan. Connects multiple levels into a campaign arc and gives the project its cartoon-galaxy identity. Without it, each level is an island.
-- **Acceptance:** New Phaser scene showing a starry galaxy map with planet nodes. Selecting a planet loads its level. At least one planet (the current corridor level, retitled) is reachable from the hub. Hub remembers which planets are unlocked (in-memory for now — persistence is a separate item).
-- **Size:** L
-- **Added:** 2026-05-12
-
 ### [Feature] Planet 2 — ice theme with themed puzzle/power variant
 - **Why:** M4. First test of whether the planet-as-theme structure carries variety. Themed visuals + a twist on existing powers (e.g. slippery ground, freeze power chains across enemies).
 - **Acceptance:** Second playable level with ice/snow tileset, at least one mechanic distinct from Planet 1, and a power-puzzle variant that feels themed (e.g. ice-themed math puzzle, or a sudoku with snowflake symbols).
@@ -59,7 +53,13 @@ Pick items with the `project-backlog` skill in Claude Code.
 
 ## In Progress
 
-(none)
+### [Feature] Galaxy hub scene with planet nodes
+- **Why:** M4 in the plan. Connects multiple levels into a campaign arc and gives the project its cartoon-galaxy identity. Without it, each level is an island.
+- **Acceptance:** New Phaser scene showing a starry galaxy map with planet nodes. Selecting a planet loads its level. At least one planet (the current corridor level, retitled) is reachable from the hub. Hub remembers which planets are unlocked (in-memory for now — persistence is a separate item).
+- **Size:** L
+- **Added:** 2026-05-12
+- **Started:** 2026-05-14
+- **Note:** Scoped as the M4 foundation orchestrator (`.claude/orchestrator-prompt.md`): Phase 1 refactors `Level.ts` → data-driven `Planet.ts` taking a `PlanetConfig`; Phase 2 adds `HubScene` with one playable planet node + two locked placeholders, plus a "Return to Hub" win-screen button alongside "Play again". Planet 2 (ice) and Planet 3 (library) are separate orchestrator runs on top. Unlock state is in-memory only; persistence is an M5 question.
 
 ---
 
