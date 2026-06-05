@@ -66,4 +66,4 @@ chore(m0): scaffold Vite + Phaser + React skeleton
 
 ## Orchestrator-worker pattern
 
-This repo uses an orchestrator-worker workflow for non-trivial features. See `.claude/orchestrator-prompt.md` for the current feature's orchestrator setup, `.claude/agents/` for named subagents, and `.claude/templates/phase-brief.md` for the per-phase brief format.
+This repo uses an orchestrator-worker workflow for non-trivial features. See `.claude/orchestrator.md` for invariants, gates, and operating modes (autonomous vs. high-oversight dispatch); `.claude/agents/` for specialist role prompts; and `.claude/templates/phase-brief.md` for the per-phase brief format. `.claude/orchestrator-prompt.md` is the historical M4 per-scope brief — kept for reference.
