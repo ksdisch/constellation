@@ -26,6 +26,12 @@ const POWERS: Power[] = [
     subtitle: 'Trivia — 3 questions in 30s',
     accent: '#f6c971',
   },
+  {
+    id: 'phase-dash',
+    label: 'Phase Dash',
+    subtitle: 'Phase Align — line up the dials',
+    accent: '#5eead4',
+  },
 ];
 
 interface Props {

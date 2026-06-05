@@ -22,7 +22,8 @@ export type JuiceEvent =
   | 'platform'
   | 'illuminate'
   | 'death'
-  | 'win';
+  | 'win'
+  | 'phase-dash';
 
 export type ShakeSpec = { duration: number; intensity: number };
 export type BurstSpec = {
@@ -69,6 +70,11 @@ export const EFFECTS: Record<JuiceEvent, EffectSpec> = {
     cue: 'win',
     shake: { duration: 220, intensity: 0.008 },
     burst: { count: 28, color: 0x98ffc8, speed: 160, lifespan: 700, scale: 1.2 },
+  },
+  // Phase-shift slip — teal shimmer, no shake (a cozy slip, not an impact).
+  'phase-dash': {
+    cue: 'phase',
+    burst: { count: 18, color: 0x5eead4, speed: 150, lifespan: 460, scale: 1.0 },
   },
 };
 

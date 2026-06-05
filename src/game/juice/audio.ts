@@ -19,7 +19,8 @@ export type CueName =
   | 'platform'
   | 'illuminate'
   | 'death'
-  | 'win';
+  | 'win'
+  | 'phase';
 
 /** A short synthesized blip. `endFreq` (when set) sweeps freq → endFreq. */
 export type CueSpec = {
@@ -49,6 +50,8 @@ export const CUES: Record<CueName, CueSpec> = {
   death: { type: 'sawtooth', freq: 300, endFreq: 90, duration: 0.28, gain: 0.22 },
   // bright triumphant rise
   win: { type: 'sine', freq: 660, endFreq: 990, duration: 0.45, gain: 0.24 },
+  // ethereal phase-shift zip — quick rising shimmer
+  phase: { type: 'triangle', freq: 700, endFreq: 1500, duration: 0.2, gain: 0.2 },
 };
 
 /** A play target the engine writes cues to. Swappable for tests. */

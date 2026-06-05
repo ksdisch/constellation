@@ -30,6 +30,10 @@ export type PlanetConfig = {
   fallRespawnY: number;
   // OPT-IN visual theme. Omit (as planet1Config does) for the default look.
   theme?: PlanetTheme;
+  // OPT-IN Phase Dash hazard — a full-height "plasma curtain" the astronaut can
+  // only cross while phased. {x,y} is the center; height should span the play
+  // area top-to-ground so it can't be jumped over. Omit (planet-1/2) for none.
+  hazardLane?: { x: number; y: number; width: number; height: number };
 };
 
 export const planet1Config: PlanetConfig = {

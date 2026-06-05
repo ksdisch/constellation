@@ -26,6 +26,9 @@ export type BridgeState = {
   respawnCount: number;
   platformCount: number;
   darkZonePresent: boolean;
+  // True while a Phase Dash window is active (astronaut immune to the hazard
+  // lane). Lets a headless driver prove Phase Dash is load-bearing.
+  phaseActive: boolean;
   unlockedPlanets: string[];
   completed: Record<string, boolean>;
   // Juice observability (M5). lastSfxCue is the most recently requested sound
@@ -85,6 +88,7 @@ function zeroedState(): BridgeState {
     respawnCount: 0,
     platformCount: 0,
     darkZonePresent: false,
+    phaseActive: false,
     unlockedPlanets: [],
     completed: {},
     lastSfxCue: null,
