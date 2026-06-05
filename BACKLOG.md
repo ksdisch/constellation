@@ -25,11 +25,12 @@ Pick items with the `project-backlog` skill in Claude Code.
 - **Size:** L
 - **Added:** 2026-05-12
 
-### [Feature] Polish pass — music, SFX, particles, screen shake, camera feel
-- **Why:** M5. The thing that turns "a working prototype" into "show your friends." Plan calls out Incompetech/OpenGameArt as music sources, and notes camera feel as a known gap.
-- **Acceptance:** Background music loops on the hub and during levels (different tracks). SFX on jump, cast, freeze, win. Particle burst on cast and on win. Screen shake on death. Camera that lerps to follow the astronaut instead of being static. Subjective bar: "feels juicy."
-- **Size:** L
+### [Feature] Polish pass — remainder: music + camera feel
+- **Why:** M5. The SFX/particles/screen-shake/win-beat slice shipped (see Done: "Juice layer"); what remains of the original polish pass is **background music** (Incompetech/OpenGameArt loops, different tracks on hub vs. levels) and **camera feel** (a camera that lerps to follow the astronaut instead of being static). Music likely needs a small audio-asset decision (the stack is otherwise asset-free); camera-follow is pure Phaser.
+- **Acceptance:** Background music loops on the hub and during levels (different tracks). Camera lerps to follow the astronaut. Subjective bar: "feels juicy" — building on the existing SFX/particle/shake layer.
+- **Size:** M
 - **Added:** 2026-05-12
+- **Note:** Narrowed 2026-06-05 after the SFX/particles/shake subset shipped on `feat/m5-juice`.
 
 ### [Feature] Deploy — relay to Fly.io (or Cloudflare DO), game client to itch.io
 - **Why:** M5. The actual ship. Without deployment, the game can't leave your wifi.
@@ -58,6 +59,14 @@ Pick items with the `project-backlog` skill in Claude Code.
 ---
 
 ## Done
+
+### [Feature] Juice layer — procedural SFX + screen shake + particle bursts + win beat
+- **Why:** M5. The first "show your friends" polish: the three powers cast in silence with no feedback beyond a text banner. This makes them *feel* powerful and turns the prototype tactile — the largest perceived-quality jump per line, with zero new dependency and zero asset files.
+- **Acceptance:** Native-WebAudio synth cues on jump / freeze / platform / illuminate / death / win; palette-matched particle bursts on each cast + death + win; gentle screen shake on death and win; a win beat (mint burst + soft camera flash). No protocol/relay/dep changes; Freeze Stars cast logic untouched. Pure cue/effect tables unit-tested; every effect assertable headlessly via new `BridgeState` fields.
+- **Size:** M
+- **Added:** 2026-06-05
+- **Completed:** 2026-06-05
+- **Note:** Built by the `/autonomous-milestone` workflow (brainstorm v3 top pick, 8.7). New `src/game/juice/{audio,effects}.ts` — `audio.ts` is a pure, scene-free cue engine with an injectable `AudioSink` (lazy WebAudio default, mock for Vitest); `effects.ts` is a pure `EFFECTS` table + a `JuiceController` scene applier (camera shake + one-shot self-tearing particle emitter), with **Phaser imported as a type only** so the table stays Vitest-testable without pulling Phaser into jsdom. `BridgeState` gained `lastSfxCue / shakeActive / lastBurst / audioState`. Live-verified at `?solo=1&test=1`: each cue+burst fires, death sets `shakeActive`, a full planet-1 clear sets `winCue='win'` + unlocks planet-2, `audioState` reaches `'running'`, and `?solo=1` without `test=1` keeps the bridge undefined. **Audibility is perceptual** (autoplay-resume), documented in `docs/AUTONOMY.md`. Deliberately used a camera flash, not `timeScale` slow-mo, to avoid cross-scene physics-teardown. Remaining polish (music + camera-follow) is a trimmed Open item.
 
 ### [Feature] Autonomy Substrate — flag-gated test bridge + deterministic input seam + kill-floor fix
 - **Why:** M5. The project's only integration gate was a human "is it fun?" playtest, which blocked autonomous verification of real gameplay. A `?test=1`-gated `window.__constellation` bridge makes the running game *assertable* by a browser driver (read scene state, cast powers, drive the astronaut, jump straight into any planet) — turning "drive the canvas and hope" into "read a boolean."

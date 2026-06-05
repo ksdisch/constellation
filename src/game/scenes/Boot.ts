@@ -21,6 +21,9 @@ export class BootScene extends Phaser.Scene {
     this.makeSolidTexture('goal', 28, 28, 0xffef7a);
     this.makeSolidTexture('platform', 96, 14, 0x9a7aff);
     this.makeSolidTexture('hidden-platform', 120, 16, 0x4a5888);
+    // White particle for juice bursts; the emitter tints it per-event, so one
+    // planet-agnostic texture serves every cast/death/win burst.
+    this.makeSolidTexture('spark', 8, 8, 0xffffff);
 
     // Per-theme textures for any registered planet that opts into a theme.
     // Generated at the SAME sizes as the defaults above, keyed `<key>-<id>`.

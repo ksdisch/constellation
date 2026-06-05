@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { getTestInput } from '../testBridge';
+import { playCue } from '../juice/audio';
 
 type InputKeys = {
   W: Phaser.Input.Keyboard.Key;
@@ -43,6 +44,7 @@ export class Astronaut {
 
     if (jumpPressed && body.blocked.down) {
       body.setVelocityY(this.jumpVelocity);
+      playCue('jump');
     }
   }
 }

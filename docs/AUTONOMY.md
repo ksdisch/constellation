@@ -32,8 +32,26 @@ http://<host>:5180/?solo=1&test=1
 | `startPlanet(id)` | `'planet-1' \| 'planet-2' \| ...` | Jumps straight into a planet from Hub *or* Planet. Only launches registry entries that have a `config` (config-less stubs are no-ops). |
 
 `BridgeState = { sceneKey, won, enemyFrozen, astronautX, astronautY, respawnCount, platformCount,
-darkZonePresent, unlockedPlanets: string[], completed: Record<string, boolean> }`.
+darkZonePresent, unlockedPlanets: string[], completed: Record<string, boolean>, lastSfxCue, shakeActive,
+lastBurst, audioState }`.
 `unlockedPlanets`/`completed` are read fresh from `loadProgress()` (localStorage) on every call.
+
+### Juice fields (SFX / shake / particles)
+
+The last four fields make the M5 juice layer assertable:
+
+| Field | Type | Notes |
+|---|---|---|
+| `lastSfxCue` | `string \| null` | The most recently **requested** sound cue (`'jump' \| 'freeze' \| 'platform' \| 'illuminate' \| 'death' \| 'win'`). Set even when audio is silent — see the perceptual caveat below. Module-global, so it persists across a scene restart (assert on transitions, not absolute freshness). |
+| `shakeActive` | `boolean` | True while `cameras.main` is mid-shake. Fires on `death` and `win`. |
+| `lastBurst` | `{ kind, count } \| null` | The most recent particle burst's event + particle count. |
+| `audioState` | `string` | The WebAudio context state: `'unavailable'` (no sink yet), `'suspended'`, or `'running'`. |
+
+**Audibility is perceptual, like Illuminate.** `lastSfxCue` proves the cue was *requested* and `audioState`
+proves whether the context actually resumed — but whether a human *hears* it depends on the browser's
+autoplay-resume gesture. So assert `lastSfxCue` flips on cast and (optionally) that `audioState` reaches
+`'running'`; do **not** treat silence as a failure. The pure cue/effect tables are Vitest-asserted in
+`src/game/juice/*.test.ts`.
 
 ## Load-bearing semantics (important for honest negative tests)
 
@@ -68,7 +86,10 @@ reaching y=600, `won` staying false, `maxX` never crossing the pit.
 6. **Illuminate (perceptual)** → assert `darkZonePresent` `true → false` on cast (not an omit test).
 7. **Reload durability** → hard reload; read `localStorage['constellation:progress']`; assert the completion + unlock survived.
 8. **Freeze regression** → `cast('freeze-stars')`; assert `enemyFrozen` `false → true → …(3s)… → false`.
-9. **No-flag inertness** → load `?solo=1` *without* `test=1`; assert `window.__constellation === undefined` and a canvas still exists.
+9. **Juice** → after each `cast(id)` assert `lastSfxCue` and `lastBurst.kind` match the power; drive a death
+   (omit-freeze, walk into the sentry) and assert `shakeActive === true`; on a positive clear assert
+   `lastSfxCue === 'win'`. `audioState` is expected to reach `'running'`; silence is not a failure (perceptual).
+10. **No-flag inertness** → load `?solo=1` *without* `test=1`; assert `window.__constellation === undefined` and a canvas still exists.
 
 ## Known sharp edges
 

@@ -7,6 +7,8 @@ import type { PlanetConfig } from '../planets/planet1';
 import { loadProgress, markPlanetComplete, saveProgress } from '../progression/save';
 import { PLANETS } from '../planets/registry';
 import { isTestMode, setBridgeProviders } from '../testBridge';
+import { JuiceController } from '../juice/effects';
+import { getLastCue, getAudioState, resetLastCue } from '../juice/audio';
 
 const FREEZE_DURATION_MS = 3000;
 const PLATFORM_LIFETIME_MS = 5000;
@@ -23,6 +25,7 @@ export class PlanetScene extends Phaser.Scene {
   private won = false;
   private solo = false;
   private config!: PlanetConfig;
+  private juice!: JuiceController;
   // Counts respawns (pit-fall or enemy hit) for the test bridge snapshot.
   private respawnCount = 0;
 
@@ -49,6 +52,9 @@ export class PlanetScene extends Phaser.Scene {
     this.solo = data.solo ?? false;
     this.won = false;
     this.respawnCount = 0;
+    // Drop any cue recorded by a prior run so the bridge starts clean (keeps the
+    // audio context alive — see resetLastCue vs resetAudio).
+    resetLastCue();
   }
 
   create() {
@@ -57,6 +63,9 @@ export class PlanetScene extends Phaser.Scene {
     if (this.config.theme) {
       this.cameras.main.setBackgroundColor(this.config.theme.background);
     }
+
+    // Scene-bound juice applier (SFX + screen shake + particle bursts).
+    this.juice = new JuiceController(this);
 
     // The floor is the ground tiles, NOT the world's bottom edge. Disabling the
     // world bottom edge lets a missed pit jump fall past `fallRespawnY` (600,
@@ -180,6 +189,10 @@ export class PlanetScene extends Phaser.Scene {
             darkZonePresent: this.darkZone !== null,
             unlockedPlanets: progress.unlockedPlanets,
             completed: progress.completed,
+            lastSfxCue: getLastCue(),
+            shakeActive: this.juice.shakeActive,
+            lastBurst: this.juice.lastBurstInfo,
+            audioState: getAudioState(),
           };
         },
         cast: (id) => this.castPower(id),
@@ -202,11 +215,13 @@ export class PlanetScene extends Phaser.Scene {
     switch (powerId) {
       case 'freeze-stars':
         this.enemy.freeze(FREEZE_DURATION_MS, this);
+        this.juice.trigger('freeze', this.enemy.sprite.x, this.enemy.sprite.y);
         this.flashBanner('FREEZE!', '#7ad8ff');
         break;
       case 'summon-platform':
         if (this.platforms.getChildren().length > 0) break;
         this.summonPlatform();
+        this.juice.trigger('platform', this.config.platformDrop.x, this.config.platformDrop.y);
         this.flashBanner('PLATFORM!', '#9a7aff');
         break;
       case 'illuminate':
@@ -226,6 +241,7 @@ export class PlanetScene extends Phaser.Scene {
     // remains revealed across resets (permanent reveal semantics).
     if (!this.darkZone) return;
     const zone = this.darkZone;
+    this.juice.trigger('illuminate', this.config.darkZone.x, this.config.darkZone.y);
     this.darkZone = null;
     this.tweens.add({
       targets: zone,
@@ -270,6 +286,11 @@ export class PlanetScene extends Phaser.Scene {
   private resetAstronaut() {
     this.respawnCount += 1;
     const body = this.astronaut.sprite.body as Phaser.Physics.Arcade.Body;
+    // Death juice at the point of failure. Clamp the burst into the visible band
+    // so a pit fall (astronaut below the 540 canvas, the most common death) still
+    // shows sparks near the bottom edge rather than wasting them off-screen; the
+    // shake fires regardless.
+    this.juice.trigger('death', this.astronaut.sprite.x, Math.min(this.astronaut.sprite.y, 500));
     this.astronaut.sprite.setPosition(this.config.spawn.x, this.config.spawn.y);
     body.setVelocity(0, 0);
     this.astronaut.sprite.setTint(0xff6b9d);
@@ -301,6 +322,12 @@ export class PlanetScene extends Phaser.Scene {
   private showWin() {
     this.won = true;
     (this.astronaut.sprite.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0);
+
+    // Win beat: mint burst + cue at the goal, plus a soft camera flash. No
+    // physics/timeScale slow-mo — the next scene (Hub/replay) inherits a clean
+    // camera, so there is nothing to reset on the restart/return paths.
+    this.juice.trigger('win', this.config.goal.x, this.config.goal.y);
+    this.cameras.main.flash(220, 152, 255, 200);
 
     // Durably record the completion: mark this planet complete (which unlocks
     // the next in the chain) and persist. markPlanetComplete is pure, so we

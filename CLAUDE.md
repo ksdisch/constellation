@@ -6,7 +6,7 @@ Read [README.md](README.md) for run instructions. High-level plan and milestones
 
 ## File layout
 
-- `src/game/` — Phaser 3 game client (laptop). Scenes in `scenes/`, entity classes in `entities/`, networking in `net/`, bootstrap in `main.ts`.
+- `src/game/` — Phaser 3 game client (laptop). Scenes in `scenes/`, entity classes in `entities/`, networking in `net/`, bootstrap in `main.ts`. Juice (procedural SFX + particle/shake effect tables and the scene-bound `JuiceController` applier) lives in `juice/`.
 - `src/phone/` — React 19 phone client. Components in `components/`, puzzles in `components/puzzles/`, networking in `net/`, bootstrap in `main.tsx`.
 - `src/shared/` — Code shared between game and phone. Only `protocol.ts` lives here (wire message types). Both sides import from `../shared/protocol`. Treat this as a strict boundary — nothing else goes here.
 - `server/` — Node + `ws` relay. Pass-through forwarding by room code. No game logic; never put game logic here.

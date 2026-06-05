@@ -28,6 +28,15 @@ export type BridgeState = {
   darkZonePresent: boolean;
   unlockedPlanets: string[];
   completed: Record<string, boolean>;
+  // Juice observability (M5). lastSfxCue is the most recently requested sound
+  // cue (set even when audio is silent/suspended); shakeActive is true mid
+  // camera-shake; lastBurst is the most recent particle burst; audioState is the
+  // WebAudio context state ('suspended' | 'running' | 'unavailable') for the
+  // honest autoplay-resume caveat — audibility itself is perceptual.
+  lastSfxCue: string | null;
+  shakeActive: boolean;
+  lastBurst: { kind: string; count: number } | null;
+  audioState: string;
 };
 
 /** The object exposed on `window.__constellation` when `?test=1`. */
@@ -78,6 +87,10 @@ function zeroedState(): BridgeState {
     darkZonePresent: false,
     unlockedPlanets: [],
     completed: {},
+    lastSfxCue: null,
+    shakeActive: false,
+    lastBurst: null,
+    audioState: 'unavailable',
   };
 }
 
