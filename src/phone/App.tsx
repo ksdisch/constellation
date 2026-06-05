@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import type { ReactElement } from 'react';
 import { RoomJoin } from './components/RoomJoin';
 import { Spellbook } from './components/Spellbook';
 import { QuickMath } from './components/puzzles/QuickMath';
@@ -12,6 +13,21 @@ const FEEDBACK: Record<PowerId, { title: string; color: string; sub: string }> =
   'summon-platform': { title: 'Cast!', color: '#9a7aff', sub: 'Platform — bridge holds for 5s.' },
   'illuminate': { title: 'Cast!', color: '#f6c971', sub: 'Illuminate — dark zone revealed.' },
 };
+
+/** Props every puzzle component accepts (some also take optional difficulty props). */
+type PuzzleProps = { onSolved: () => void; onCancel: () => void };
+
+/**
+ * Exhaustive puzzle router, keyed by PowerId. `satisfies Record<PowerId, …>`
+ * makes a missing power a COMPILE error — adding a 4th PowerId without a phone
+ * puzzle no longer silently renders a blank screen (the old if-chain's
+ * `return null` fallthrough).
+ */
+const PUZZLES = {
+  'freeze-stars': (p: PuzzleProps) => <QuickMath {...p} />,
+  'summon-platform': (p: PuzzleProps) => <TapSequence {...p} />,
+  'illuminate': (p: PuzzleProps) => <Trivia {...p} />,
+} satisfies Record<PowerId, (p: PuzzleProps) => ReactElement>;
 
 type Phase =
   | { kind: 'idle' }
@@ -134,16 +150,7 @@ function renderPhase(
     );
   }
   if (phase.kind === 'puzzle') {
-    if (phase.power === 'freeze-stars') {
-      return <QuickMath onSolved={actions.onSolved} onCancel={actions.onCancel} />;
-    }
-    if (phase.power === 'summon-platform') {
-      return <TapSequence onSolved={actions.onSolved} onCancel={actions.onCancel} />;
-    }
-    if (phase.power === 'illuminate') {
-      return <Trivia onSolved={actions.onSolved} onCancel={actions.onCancel} />;
-    }
-    return null;
+    return PUZZLES[phase.power]({ onSolved: actions.onSolved, onCancel: actions.onCancel });
   }
   // cast-feedback
   const f = FEEDBACK[phase.power];
