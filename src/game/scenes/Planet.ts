@@ -8,7 +8,7 @@ import { loadProgress, markPlanetComplete, saveProgress } from '../progression/s
 import { PLANETS } from '../planets/registry';
 import { isTestMode, setBridgeProviders } from '../testBridge';
 import { JuiceController } from '../juice/effects';
-import { getLastCue, getAudioState } from '../juice/audio';
+import { getLastCue, getAudioState, resetLastCue } from '../juice/audio';
 
 const FREEZE_DURATION_MS = 3000;
 const PLATFORM_LIFETIME_MS = 5000;
@@ -52,6 +52,9 @@ export class PlanetScene extends Phaser.Scene {
     this.solo = data.solo ?? false;
     this.won = false;
     this.respawnCount = 0;
+    // Drop any cue recorded by a prior run so the bridge starts clean (keeps the
+    // audio context alive — see resetLastCue vs resetAudio).
+    resetLastCue();
   }
 
   create() {
@@ -283,9 +286,11 @@ export class PlanetScene extends Phaser.Scene {
   private resetAstronaut() {
     this.respawnCount += 1;
     const body = this.astronaut.sprite.body as Phaser.Physics.Arcade.Body;
-    // Death juice at the point of failure (shake carries it even for an
-    // off-screen pit fall, where the burst lands below the canvas).
-    this.juice.trigger('death', this.astronaut.sprite.x, this.astronaut.sprite.y);
+    // Death juice at the point of failure. Clamp the burst into the visible band
+    // so a pit fall (astronaut below the 540 canvas, the most common death) still
+    // shows sparks near the bottom edge rather than wasting them off-screen; the
+    // shake fires regardless.
+    this.juice.trigger('death', this.astronaut.sprite.x, Math.min(this.astronaut.sprite.y, 500));
     this.astronaut.sprite.setPosition(this.config.spawn.x, this.config.spawn.y);
     body.setVelocity(0, 0);
     this.astronaut.sprite.setTint(0xff6b9d);

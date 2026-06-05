@@ -5,6 +5,7 @@ import {
   getLastCue,
   getAudioState,
   resetAudio,
+  resetLastCue,
   setAudioSink,
   type CueName,
   type CueSpec,
@@ -95,5 +96,19 @@ describe('playCue dispatch', () => {
   it('reports unavailable when no sink is set', () => {
     resetAudio();
     expect(getAudioState()).toBe('unavailable');
+  });
+
+  it('resetLastCue clears the cue but keeps the sink alive (scene-restart path)', () => {
+    const mock = new MockSink();
+    setAudioSink(mock);
+    playCue('win');
+    expect(getLastCue()).toBe('win');
+    resetLastCue();
+    expect(getLastCue()).toBeNull();
+    // Sink survived, so the context state is still readable (not 'unavailable').
+    expect(getAudioState()).toBe('running');
+    // …and the next cue still routes to the same sink.
+    playCue('jump');
+    expect(mock.played).toHaveLength(2);
   });
 });

@@ -124,6 +124,9 @@ export class JuiceController {
 
   /** True while the camera shake effect is mid-run (read by the test bridge). */
   get shakeActive(): boolean {
-    return this.scene.cameras.main.shakeEffect.isRunning;
+    // Defensive against a torn-down scene: the bridge's getState provider is
+    // module-global and may linger after this scene is destroyed (e.g. a driver
+    // polling from the Hub), at which point cameras.main is gone.
+    return this.scene.cameras?.main?.shakeEffect?.isRunning ?? false;
   }
 }

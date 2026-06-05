@@ -149,6 +149,16 @@ export function getAudioState(): string {
   return sink ? sink.state : 'unavailable';
 }
 
+/**
+ * Clear only the recorded cue, keeping the resolved sink (and its live audio
+ * context) intact. Scenes call this on (re)start so a stale `lastCue` — e.g.
+ * 'win' from the previous run — does not bleed into the next planet's bridge
+ * reads. Distinct from {@link resetAudio}, which also drops the sink.
+ */
+export function resetLastCue(): void {
+  lastCue = null;
+}
+
 /** Test helper: clear the recorded cue and drop any sink. */
 export function resetAudio(): void {
   lastCue = null;
