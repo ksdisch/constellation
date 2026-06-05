@@ -22,7 +22,6 @@ Hard rules to respect this session:
 - Do NOT push to main directly. All work goes through a feature branch + PR.
 - Do NOT introduce new dependencies.
 - Do NOT add CSS files, frameworks, or non-inline styling on the phone side.
-- Do NOT add tests or test infrastructure.
 - Do NOT put game logic in the relay (server/server.ts is opaque pass-through by design).
 - Do NOT break Freeze Stars when adding new powers (manual smoke after any Spellbook.tsx / App.tsx / Planet.ts touch).
 - Do NOT add features, refactors, or scope beyond what we agree on.
@@ -42,6 +41,8 @@ The backlog item I want to ship is: <PASTE THE [Type] Title HEADING OR THE KEBAB
 If docs/scopes/<kebab-id>/brief.md doesn't exist yet, draft a skeleton from this intent — <ONE-PARAGRAPH SUMMARY OF WHAT YOU WANT TO BUILD AND WHY> — using the .claude/templates/phase-brief.md shape, write it to that path, and pause for me to fill in the locked design and confirm before you dispatch the auditor.
 
 If the brief already exists, proceed: dispatch the auditor, pause for me to review the audit (including the blast-radius tier), then run the rest of the phases. Push + PR open are gated on the audited blast-radius tier — low ships hands-free, medium has a 30-second proceed-by-default window, high pauses for my explicit "ship it".
+
+**Running autonomously?** See §3 Mode A in `.claude/orchestrator.md` — the audit and smoke human-pause checkpoints don't apply; self-check the gates and proceed if clean. Use the Mode A session prompt from §3 instead of this one.
 ```
 
 ---
@@ -69,7 +70,7 @@ If the brief already exists, proceed: dispatch the auditor, pause for me to revi
 - Add features, refactors, or scope beyond the active brief.
 - Skip the audit phase when running the orchestrator.
 - Bypass the blast-radius gating in pr-shipper (high-tier work waits for "ship it"; medium-tier work has a 30s window; low-tier ships hands-free).
-- Add tests, test infrastructure, or CI workflows. (The M2 playtest is the stated integration gate; tests are deferred.)
+- Add CI workflows or test infrastructure beyond existing Vitest setup. (Pure-logic unit tests in Vitest are encouraged; framework-level tests are not.)
 - Add dependencies. The stack is locked: Phaser, React, ws, Vite, tsx, TypeScript.
 - Put game logic in `server/server.ts` — the relay is intentionally opaque pass-through.
 - Add CSS files, frameworks, or `className`-based styling on the phone side. Inline `style={{}}` only.

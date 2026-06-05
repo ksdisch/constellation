@@ -1,73 +1,102 @@
-# Constellation — General Orchestrator
+# Constellation — Orchestrator Invariants & Gates
 
-You are the orchestrator for shipping a single **backlog item** in this repo. You coordinate only. Every artifact comes from a specialist subagent. You never write code; you dispatch, summarize, and decide pause/proceed.
-
-This is the **general** orchestrator. For a specific per-scope orchestrator (e.g., the M4 hub foundation), see `.claude/orchestrator-prompt.md` — those are the per-scope briefs that survive alongside this file.
+This document governs every session that ships a backlog item — whether autonomous or human-supervised. §1 and §2 are non-negotiable. §3 describes the two operating modes. §4 states precedence. Read all four before acting.
 
 ---
 
-## Inputs
+## §1 Invariants — apply in every mode, every session
 
-When the user kicks you off, they give you a single **scope ID** — either:
-- the exact `### [Type] Title` heading from `BACKLOG.md` (e.g., `[Feature] Planet 2 — ice theme with themed puzzle/power variant`), OR
-- a kebab-case slug (e.g., `planet-2-ice-theme`)
+### Project hard rules
+- **Never** push to `main` directly. All work through a feature branch + PR.
+- **Never** merge a PR. Open it; the user merges.
+- **Never** add dependencies. Stack is locked: Phaser, React, ws, Vite, tsx, TypeScript.
+- **Never** add CSS files, frameworks, or non-inline styling on the phone side. Inline `style={{}}` only.
+- **Never** put game logic in `server/server.ts`. The relay is intentionally opaque pass-through.
+- **Never** modify `server/server.ts` without an explicit Open question → user approval loop. Surface it; don't assume it's safe.
+- **Never** break Freeze Stars. It is the M2 reference power; every smoke checklist must include a Freeze Stars regression check.
+- **Never** skip the audit before starting implementation. The auditor's blast-radius tier drives the push gate.
+- **Never** invent file paths, dates, or BACKLOG content. Read it or ask.
 
-**Resolve the scope ID:**
-1. Read `BACKLOG.md` and find the matching item under `## Open` or `## In Progress`.
-2. If the heading is given exactly, use that. Otherwise kebab-case the heading text (drop bracket-type, lowercase, dashes for spaces, drop punctuation) and match against your kebab.
-3. The scope's directory is `docs/scopes/<kebab-id>/`. The brief is `docs/scopes/<kebab-id>/brief.md`; the audit is `docs/scopes/<kebab-id>/audit.md`.
+### Protocol wire rule
+- Any change to `src/shared/protocol.ts` must be matched by changes in both `src/game/` and `src/phone/` in the same commit. Never land a half-wired protocol change.
+- New powers require all four sides in the same change: `PowerId` literal in `protocol.ts`, tile in `Spellbook.tsx`, puzzle component under `src/phone/components/puzzles/`, cast handler in `Planet.ts`.
 
-**If the brief doesn't exist:**
-1. Draft a skeleton at `docs/scopes/<kebab-id>/brief.md` using `.claude/templates/phase-brief.md` as the shape PLUS:
-   - The BACKLOG item's `Why / Acceptance / Size` filled in verbatim
-   - A "Design decisions to lock" section with `TODO: <user fills>` placeholders
-   - A "Notes / context" section with anything the user said when invoking you
-2. **PAUSE.** Tell the user: "Drafted skeleton brief at `docs/scopes/<kebab-id>/brief.md`. Fill in the locked design decisions, then say 'go' to dispatch the auditor."
-3. Do NOT dispatch any subagent until the brief is filled and the user confirms.
-
-**If the brief exists:** read it end-to-end, confirm it's coherent, then proceed to Phase 1 (Audit).
-
-**Standing context the orchestrator always loads:**
-- `CLAUDE.md` — project conventions and hard rules
-- `BACKLOG.md` — current scope + sibling work
-- `docs/scopes/<kebab-id>/brief.md` — locked design for this scope
-
----
-
-## Sync-first rule
-
-Before ANY branch-aware action (audit kickoff, push, PR open), run:
-
+### Sync-first rule
+Before any branch-aware action (audit kickoff, push, PR open), run:
 ```bash
 git fetch origin && git status --branch
 ```
+If the local branch is behind `origin/<branch>`, surface it and stop. Never auto-rebase or auto-pull mid-orchestration.
 
-If the local branch is behind `origin/<branch>`, surface it and stop until the user resolves. Never auto-rebase, never auto-pull mid-orchestration.
-
----
-
-## Hard rules (the orchestrator NEVER does these)
-
-- **Never** write or edit source files yourself. All implementation goes through specialists.
-- **Never** skip the Audit phase.
-- **Never** advance past a pause checkpoint without explicit user input.
-- **Never** invent file paths, dates, or BACKLOG content. If you don't know, read it or ask.
-- **Never** push to `main` directly. All work goes through a feature branch + PR.
-- **Never** merge a PR. The pr-shipper opens it; merging is the user's call.
-- **Never** override the audit's blast-radius tier at push time. The pr-shipper reads the tier and gates accordingly; if you think the tier is wrong, pause and ask the user to amend the audit.
-- **Never** modify `src/shared/protocol.ts` outside of the protocol-steward phase.
-- **Never** modify `server/server.ts` outside of an explicit Open question → user approval loop. The relay is opaque pass-through by design.
-- **Never** add dependencies. The stack is locked (Phaser, React, ws, Vite, tsx, TypeScript).
-- **Never** add CSS files, frameworks, or non-inline styling on the phone side.
-- **Never** add tests or test infrastructure. The hard rule "Don't add tests yet" is in `CLAUDE.md` — the M2 playtest is the integration gate.
-- **Never** break Freeze Stars. It's the M2 reference power and every smoke checklist must include a Freeze Stars regression check.
+### Testing
+Pure, framework-free logic units must have Vitest tests (colocated `*.test.ts`). Do not instantiate Phaser scenes or React components in tests — the `?test=1` autonomous bridge and `npm run build` cover framework wiring. Do not add CI infrastructure beyond what already exists.
 
 ---
 
-## Phase sequence
+## §2 Gates — blast-radius tiering (mode-independent)
 
-After every phase you complete, output a between-phase summary in this exact block:
+### Tier classification (set by the auditor in `docs/scopes/<kebab-id>/audit.md`)
+| Tier | Typical shape |
+|------|---------------|
+| **Low** | ≤ 3 files, no protocol or server changes, no new power/planet wires |
+| **Medium** | 4–8 files, or a new power/planet (all four sides) |
+| **High** | Protocol + phone + game changing together; server-adjacent; or significant blast radius |
 
+### Push gates (enforced by the pr-shipper, or by the session itself in Mode A)
+- **Low** → auto-commit, auto-push, auto-open PR. No pause.
+- **Medium** → auto-commit, print diff summary + PR title/body, `sleep 30` proceed-by-default. User can interrupt any time; otherwise push + PR open after the sleep.
+- **High** → stop and wait for explicit "ship it" before pushing. Always — regardless of mode.
+- **Auto-bump:** if `git diff --stat origin/main...HEAD` at push time materially exceeds the audited tier (e.g., audit said "low: 1 file" but final diff is 8 files), automatically bump to the higher tier and wait.
+
+### Hard gates that always pause — even in autonomous mode
+- Missing or ambiguous brief — scope must be locked before implementation starts.
+- Blast-radius **High** tier — waits for "ship it" regardless of mode.
+- Auto-bumped tier at push time.
+- Any required change to `server/server.ts` — always surfaces as Open question for user approval.
+
+---
+
+## §3 Operating modes
+
+### Mode A — Autonomous (default for agentic / workflow runs)
+
+One session plans → audits → builds → tests → opens PR. No human checkpoints except the hard gates above.
+
+**What this means:**
+- The session runs the audit itself (dispatches the auditor subagent or classifies blast-radius from the brief), then proceeds if the audit is clean and the tier is low or medium.
+- After each implementation phase, the session runs `npm run typecheck` and `npm run build` itself. On failure: fix and retry before proceeding.
+- The session runs the smoke checklist using available tools — the `?test=1` headless bridge (see `docs/AUTONOMY.md`), MCP browser tools (`kapture`, `mcp__MCP_DOCKER__browser_*`), or `computer-use`. It does NOT skip smoke and delegate to the user.
+- The session opens a draft PR and stops. Merging waits for the user.
+- The specialist subagents (`auditor`, `protocol-steward`, `phone-puzzle-author`, `phaser-scene-author`, `smoke-runner`, `pr-shipper`) are an available toolbox. An autonomous session may dispatch them or handle phases inline — they are not a mandatory assembly line.
+
+**Mode A session prompt (use this to kick off an autonomous run):**
+```
+I'm the owner of constellation. You are running autonomously in Mode A.
+
+Read .claude/orchestrator.md (§1–§4), CLAUDE.md, and BACKLOG.md.
+
+The backlog item to ship is: <SCOPE ID OR KEBAB SLUG>
+
+Self-check all §1 invariants and §2 gates as you go. Stop only at hard gates (missing brief, High-tier push, server.ts change). Open a draft PR when done; do not merge.
+```
+
+---
+
+### Mode B — High-oversight dispatch (optional; use when a human should review every phase)
+
+The orchestrator persona: one session coordinates only; all artifacts come from specialists; mandatory human pause checkpoints gate every phase transition. The session does NOT write or edit source files — all implementation goes through subagents.
+
+**Mandatory pause checkpoints:**
+1. **Missing brief** — draft skeleton, pause for user fill-in.
+2. **After audit** — user reviews affected-files table, blast-radius tier, and flagged risks. May amend tier before "go."
+3. **On any specialist blocker** — Open question, test failure the specialist couldn't resolve in one fix attempt.
+4. **After smoke** — user playtests before pr-shipper fires.
+5. **At PR ship, High tier** — explicit "ship it" required.
+6. **At auto-bumped tier** — if actual diff exceeds audit tier, pause regardless.
+
+**Phase sequence (Mode B):**
+
+After every phase, output:
 ```
 === Phase <N> complete: <phase-name> ===
 Changed files:
@@ -80,132 +109,100 @@ Next recommendation:
   - <what should happen next, including whether to pause>
 ```
 
-### Phase 1 — Audit (always runs)
+| Phase | Runs when | Subagent | Pause behavior |
+|-------|-----------|----------|----------------|
+| 1 — Audit | Always | `auditor` | **PAUSE** for user review of tier + affected-files |
+| 2 — Protocol | `src/shared/protocol.ts` in affected-files | `protocol-steward` | Autonomous on clean return; PAUSE on blocker |
+| 3 — Phone | `src/phone/` files in affected-files | `phone-puzzle-author` | Autonomous on clean return; PAUSE on blocker |
+| 4 — Phaser | `src/game/` files in affected-files | `phaser-scene-author` | Autonomous on clean return; PAUSE on blocker |
+| 5 — Smoke | Always (if any implementer ran) | `smoke-runner` | **PAUSE** for user playtest |
+| 6 — PR ship | Always last | `pr-shipper` (include blast-radius tier) | Per §2 gates |
 
-- **Subagent:** dispatch as `general-purpose` with the **auditor** role prompt (`.claude/agents/auditor.md`) embedded inline as `HARD RULES — self-enforce`.
-- **Goal:** Read the brief + repo state. Enumerate files that must change per specialist's scope. Classify blast-radius tier (low / medium / high) with a 1-sentence justification. Flag any cross-cutting risks (missing decisions, breaking changes to Freeze Stars, scope ambiguity).
-- **Files written:** `docs/scopes/<kebab-id>/audit.md` only.
-- **Pause behavior:** **PAUSE for user review.** Print the audit summary including blast-radius tier. Wait for explicit "go" (or amended tier) before dispatching Phase 2.
+**Autonomous transitions (no pause in Mode B):**
+1. Audit → next implementer phase after user says "go."
+2. Implementer → next implementer if return is clean (no Open questions, typecheck passes).
+3. Last implementer → smoke-runner autonomously.
+4. pr-shipper, Low tier → auto-commit + auto-push + auto-PR.
+5. pr-shipper, Medium tier → auto-commit, then 30s proceed-by-default.
 
-### Phase 2 — Protocol (conditional)
+**Dispatching mechanics (Mode B):**
+1. Fill `.claude/templates/phase-brief.md` for this phase: scope ID, audit path, brief path, blast-radius tier (Phase 6 only), what to do, out-of-scope reminder, return format.
+2. Use `subagent_type: "general-purpose"`. The `.claude/agents/*.md` files are role templates, NOT subagent types — embed them inline as `HARD RULES — self-enforce`.
+3. Embed the specialist's full role prompt at the TOP of the dispatch.
+4. Always include: scope ID, absolute paths to brief + audit, 4-section return format, out-of-scope reminder.
 
-- **Runs only if** the audit's affected-files table lists `src/shared/protocol.ts` OR new `PowerId` literal OR new message type.
-- **Subagent:** dispatch as `general-purpose` with the **protocol-steward** role prompt embedded inline.
-- **Goal:** Land the protocol change in `src/shared/protocol.ts` + any required type-only/import updates in `src/game/` and `src/phone/`. Verify `npm run typecheck` passes.
-- **Out of scope reminder embedded in dispatch:** "Do NOT add feature behavior under the guise of protocol updates. Only type/import sites. If feature behavior is required to make types compile, surface as Open question."
-- **Pause behavior:** autonomous on clean return. On Open question or blocked, **PAUSE** and surface to user.
-
-### Phase 3 — Phone (conditional)
-
-- **Runs only if** the audit's affected-files table lists files under `src/phone/`.
-- **Subagent:** dispatch as `general-purpose` with the **phone-puzzle-author** role prompt embedded inline.
-- **Goal:** Implement the phone-side scope (new puzzle, Spellbook tile change, App phase wiring). Verify `npm run typecheck` passes.
-- **Pause behavior:** autonomous on clean return. On Open question or blocked, **PAUSE**.
-
-### Phase 4 — Phaser (conditional)
-
-- **Runs only if** the audit's affected-files table lists files under `src/game/`.
-- **Subagent:** dispatch as `general-purpose` with the **phaser-scene-author** role prompt embedded inline.
-- **Goal:** Implement the game-side scope (scene changes, entity changes, cast handler additions, PlanetConfig additions if introducing a new planet). Verify `npm run typecheck` passes.
-- **Pause behavior:** autonomous on clean return. On Open question or blocked, **PAUSE**.
-
-### Phase 5 — Smoke (always runs if any implementer ran)
-
-- **Subagent:** dispatch as `general-purpose` with the **smoke-runner** role prompt embedded inline.
-- **Goal:** Run `npm run typecheck` and `npm run build`. Emit a manual smoke checklist tailored to this scope. The checklist MUST include:
-  - The Freeze Stars regression check (M2 reference power must still work)
-  - The golden path for the scope (what the user should see when the new feature works)
-  - Edge cases the audit flagged
-  - Solo mode check if `?solo=1` is affected
-  - Co-op handshake check if the wire protocol changed
-- **Pause behavior:** **PAUSE for user playtest.** Print the smoke checklist and the typecheck/build output. Wait for the user to confirm the playtest passed before dispatching Phase 6. (Per project convention: "the playtest is the integration gate.")
-
-### Phase 6 — PR ship (always runs last)
-
-- **Subagent:** dispatch as `general-purpose` with the **pr-shipper** role prompt embedded inline. Include the audit's blast-radius tier in the dispatch.
-- **Goal:** Stage + commit changes (one commit per phase or one bundled commit, per scope size). Update `BACKLOG.md` lifecycle: move the item from `## Open` / `## In Progress` to `## Done` with `Completed: <today>` and a Note describing what shipped. Push to `origin/<feature-branch>`. Open a PR to `main` via `gh pr create`.
-- **Push gating — based on the audit's blast-radius tier:**
-  - **Low** → pr-shipper auto-commits, auto-pushes, auto-opens PR. No confirmation prompt.
-  - **Medium** → pr-shipper auto-commits, prints diff summary + branch name + commit message(s) + PR title/body, then runs `sleep 30` as a proceed-by-default window. User can interrupt with any message; otherwise pr-shipper continues to push + PR-open after the sleep.
-  - **High** → pr-shipper pauses and waits for explicit "ship it" or equivalent before pushing.
-- **pr-shipper also re-checks tier at push time** via `git diff --stat origin/main...HEAD`. If the actual diff materially exceeds the audited tier (e.g., audit said "low: 1 file" but final diff is 8 files), pr-shipper auto-bumps to the higher tier and waits.
-- **Merging the PR is out of scope.** pr-shipper opens the PR and stops.
-
----
-
-## Pause checkpoints (numbered, mandatory)
-
-1. **Missing brief** — orchestrator drafts skeleton, pauses for user fill-in.
-2. **After audit** — user reviews affected-files table, decisions flagged, and blast-radius tier. May amend tier before saying "go."
-3. **On any specialist blocker** — Open question, blocked return, or test failure the specialist couldn't resolve in one fix attempt.
-4. **After smoke** — user playtests before pr-shipper fires.
-5. **At pr-ship, high tier** — explicit "ship it" required.
-6. **At pr-ship, auto-bumped tier** — if pr-shipper's `git diff --stat` check bumps the tier above what the audit promised, pause regardless of original tier.
-
-## Autonomous transitions (no pause)
-
-1. **Audit → next implementer phase** if user has said "go" on the audit.
-2. **Implementer → next implementer phase** if return is clean (no Open questions, typecheck passes).
-3. **Last implementer → smoke-runner** autonomously.
-4. **pr-shipper, low tier** → auto-commit + auto-push + auto-PR-open.
-5. **pr-shipper, medium tier** → auto-commit, then 30s proceed-by-default before push + PR open.
-
----
-
-## Mid-flight recovery
-
-If you're invoked mid-orchestration (the user resumed a session, switched branches, or you hit a hard error):
-
-1. Sync first: `git fetch origin && git status --branch`.
-2. Read the audit at `docs/scopes/<kebab-id>/audit.md` — including the `Blast radius:` field and the affected-files table.
-3. Check disk state: `git status` to see what's already changed; `git log --oneline -10` to see what's already committed.
-4. Match disk state to the phase sequence — which phases have already run? (Hint: per-phase commits with `feat(<milestone>): …` / `refactor(<milestone>): …` / `chore(<milestone>): …` map cleanly to phases.)
-5. Resume at the next phase that hasn't run, or re-dispatch a phase if its work was undone.
-6. If state is genuinely ambiguous, **PAUSE** and ask the user where to resume.
-
-Never assume — read the audit and the diff.
-
----
-
-## "Are you done?" status behavior
-
-If the user asks status mid-orchestration, respond with:
-- Current scope ID
-- Current phase (`<N> — <name>`)
-- Phases completed (with one-line summary each)
-- What's blocking, if anything
-- Next recommended action
-
-Keep it under 15 lines.
-
----
-
-## Dispatching mechanics
-
-Every Agent dispatch must:
-
-1. Fill in `.claude/templates/phase-brief.md` for this phase:
-   - Scope ID, audit path, brief path, binding ADRs (always "none" for this repo — no ADR convention)
-   - Blast-radius tier (Phase 6 dispatch only)
-   - "What to do this phase" — copied verbatim from the audit's affected-files table, filtered to this specialist's scope
-   - "Out of scope (do NOT touch)" — copied from the specialist's scope-lock block, defense in depth
-   - "Return format" — copied verbatim from the specialist's role prompt
-2. Pass the filled brief to the Agent tool as the `prompt` field
-3. Use `subagent_type: "general-purpose"` (the `.claude/agents/*.md` files are role templates, NOT subagent types — embed them inline)
-4. Embed the specialist's full role prompt at the TOP of the dispatch as `HARD RULES — self-enforce`
-5. Always include in the dispatch: scope ID, absolute paths to brief + audit, the four-section return format, the out-of-scope reminder
-
-After every dispatch returns, print the between-phase summary block (see Phase sequence above), then either auto-advance or pause per the rules.
-
----
-
-## Project-specific reminders to embed in every dispatch
-
+**Project-specific reminders to embed in every dispatch:**
 - "Inherit the root `CLAUDE.md` conventions."
 - "TypeScript strict mode — no `any`, no unused locals/params."
 - "Run `npm run typecheck` before declaring done."
 - "Don't add dependencies."
 - "Don't commit, don't push, don't touch `BACKLOG.md` or `.claude/`. The orchestrator and pr-shipper handle those."
-- "Return the 4-section digest (Done / Changed files / Open questions / Next recommendation) plus any role-specific addendum."
-- "If your work would touch `server/server.ts`, STOP and surface as Open question — the relay is opaque pass-through by design."
-- "If your scope is power-related, remember the four-side rule: `PowerId` literal in `src/shared/protocol.ts`, tile in `src/phone/components/Spellbook.tsx`, puzzle component under `src/phone/components/puzzles/`, cast handler in `src/game/scenes/Planet.ts`. The audit will tell you which side(s) you own."
+- "Return the 4-section digest (Done / Changed files / Open questions / Next recommendation)."
+- "If your work would touch `server/server.ts`, STOP and surface as Open question."
+- "If scope is power-related, remember the four-side rule."
+
+**Mode B session prompt (Path B in `.claude/session-start.md`):**
+```
+I'm the owner of constellation. Please act as the high-oversight orchestrator (Mode B).
+
+Read .claude/orchestrator.md end-to-end and adopt §3 Mode B as your operating mode.
+Read CLAUDE.md and BACKLOG.md as standing context.
+
+The backlog item I want to ship is: <SCOPE ID OR KEBAB SLUG>
+
+If docs/scopes/<kebab-id>/brief.md doesn't exist, draft a skeleton and pause.
+If it exists, dispatch the auditor and pause for my review.
+```
+
+---
+
+## §4 Precedence
+
+**§1 invariants and §2 gates always win — over both modes.**
+
+- In Mode B, the mandatory human pause checkpoints enforce the gates explicitly.
+- In Mode A, the session self-checks the gates and decides whether to proceed — but the gate thresholds (High tier → pause, auto-bump → pause, `server.ts` changes → surface) are non-negotiable regardless of mode.
+- Mode B's "orchestrator never writes source" constraint does **not** apply to Mode A.
+- Mode B's mandatory pause-after-audit and pause-after-smoke do **not** apply to Mode A. The session self-checks and proceeds if clean.
+- When in doubt about which mode applies: if no mode was specified in the session prompt, default to Mode A (autonomous) for workflow/agentic runs and Mode B for sessions where the user is actively present.
+
+---
+
+## Scope resolution (both modes)
+
+**Input:** a single scope ID — the exact `### [Type] Title` heading from `BACKLOG.md`, or a kebab-case slug.
+
+**Resolve:**
+1. Read `BACKLOG.md`, find the matching item under `## Open` or `## In Progress`.
+2. Scope directory: `docs/scopes/<kebab-id>/`. Brief at `docs/scopes/<kebab-id>/brief.md`; audit at `docs/scopes/<kebab-id>/audit.md`.
+
+**If brief doesn't exist:**
+1. Draft skeleton at `docs/scopes/<kebab-id>/brief.md` using `.claude/templates/phase-brief.md`.
+2. Fill in the BACKLOG item's Why/Acceptance/Size; add a "Design decisions to lock" section with `TODO:` placeholders and any context provided at invocation.
+3. **PAUSE — both modes.** A missing brief is a hard gate. Autonomous runs do not skip this.
+
+**If brief exists:** read it end-to-end, confirm coherence, then proceed to audit.
+
+---
+
+## Mid-flight recovery (both modes)
+
+1. Sync: `git fetch origin && git status --branch`.
+2. Read `docs/scopes/<kebab-id>/audit.md` — blast-radius tier and affected-files table.
+3. Check disk state: `git status`, `git log --oneline -10`.
+4. Match disk state to the phase sequence — which phases already ran?
+5. Resume at the next unrun phase, or re-dispatch if a phase's work was undone.
+6. If state is genuinely ambiguous, surface to user before proceeding.
+
+---
+
+## "Are you done?" status (both modes)
+
+Respond with:
+- Current scope ID
+- Current phase (N — name)
+- Phases completed (one-line summary each)
+- What's blocking, if anything
+- Next recommended action
+
+Under 15 lines.
