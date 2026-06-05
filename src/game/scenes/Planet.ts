@@ -353,6 +353,16 @@ export class PlanetScene extends Phaser.Scene {
 
   private resetAstronaut() {
     this.respawnCount += 1;
+    // A death cancels any active Phase Dash: drop the immunity + speed boost and
+    // the translucent phase look so the respawn is clean. Bumping phaseToken
+    // supersedes the old window's pending expiry/boost callbacks (else a stale
+    // 2.5s timer would later re-touch the freshly respawned sprite).
+    if (this.phaseActive) {
+      this.phaseActive = false;
+      this.phaseToken++;
+      this.astronaut.setSpeedMultiplier(1);
+    }
+    this.astronaut.sprite.setAlpha(1);
     const body = this.astronaut.sprite.body as Phaser.Physics.Arcade.Body;
     // Death juice at the point of failure. Clamp the burst into the visible band
     // so a pit fall (astronaut below the 540 canvas, the most common death) still

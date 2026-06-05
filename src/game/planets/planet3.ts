@@ -74,8 +74,11 @@ export const planet3Config: PlanetConfig = {
   pit: { startX: 480, endX: 480 },
   corridor: { x: CORRIDOR_X },
   // Optional flourish: casting Summon Platform drops a small ledge here. Not a
-  // gate (the ground is continuous), so it is purely a player's choice.
-  platformDrop: { x: 680, y: 470 },
+  // gate (the ground is continuous), so it is purely a player's choice. Placed
+  // in the open span PAST the curtain (right edge 664) and BEFORE the dark zone
+  // (left edge 805) — the 96px platform (632..728 if centered at 680) would
+  // otherwise overlap the curtain's respawn band, so center it at 730 (682..778).
+  platformDrop: { x: 730, y: 470 },
   hiddenPlatform: { x: HIDDEN_PLATFORM_X, y: HIDDEN_PLATFORM_Y },
   darkZone: { x: HIDDEN_PLATFORM_X, y: HIDDEN_PLATFORM_Y, width: 150, height: 120 },
   fallRespawnY: 600,

@@ -23,6 +23,11 @@ import { defaultProgress, markPlanetComplete } from '../progression/save';
 const GROUND_SURFACE_Y = 500; // ground tile top
 const SPRITE_HALF_H = 24; // 48px sprite
 const JUMP_RISE = 117; // ~ v²/2g for v=460, g=900
+// The highest the astronaut's SPRITE TOP reaches from a ground jump (≈335):
+// stand center on ground (500-24) − rise (117) − half-height to the top (24).
+// Use the sprite top, not the apex center, so reach checks are conservative and
+// frame-consistent with the goal/curtain geometry.
+const GROUND_JUMP_SPRITE_TOP = GROUND_SURFACE_Y - SPRITE_HALF_H - JUMP_RISE - SPRITE_HALF_H;
 
 describe('planet3Config — structure', () => {
   it('has all required PlanetConfig fields, correctly typed', () => {
@@ -70,10 +75,9 @@ describe('planet3Config — Phase Dash hazard lane', () => {
     expect(h.width).toBeGreaterThan(0);
     const top = h.y - h.height / 2;
     const bottom = h.y + h.height / 2;
-    // Highest the astronaut's sprite top can reach from the ground:
-    const jumpApexTop = GROUND_SURFACE_Y - SPRITE_HALF_H - JUMP_RISE; // ≈ 335
-    // The curtain top must be ABOVE that apex (smaller y) so it can't be cleared.
-    expect(top).toBeLessThan(jumpApexTop);
+    // The curtain top must be ABOVE the highest the sprite top can reach (smaller
+    // y), so a running jump can never clear it overhead.
+    expect(top).toBeLessThan(GROUND_JUMP_SPRITE_TOP);
     // …and reach down to the ground so it can't be walked under.
     expect(bottom).toBeGreaterThanOrEqual(GROUND_SURFACE_Y - 10);
   });
@@ -89,9 +93,9 @@ describe('planet3Config — Phase Dash hazard lane', () => {
 describe('planet3Config — Illuminate finale reach math', () => {
   it('goal is UNREACHABLE from a ground jump (Illuminate perceptually load-bearing)', () => {
     const goalBottom = planet3Config.goal.y + 14; // 28px goal sprite
-    const groundJumpApexTop = GROUND_SURFACE_Y - SPRITE_HALF_H - JUMP_RISE; // sprite top at apex
-    // The astronaut's highest sprite top from the ground is still BELOW the goal.
-    expect(groundJumpApexTop).toBeGreaterThan(goalBottom);
+    // The sprite top at the apex of a ground jump (≈335) is still BELOW the goal
+    // bottom (larger y), so a ground jump misses — the hidden platform is required.
+    expect(GROUND_JUMP_SPRITE_TOP).toBeGreaterThan(goalBottom);
   });
 
   it('goal is REACHABLE from the hidden platform', () => {

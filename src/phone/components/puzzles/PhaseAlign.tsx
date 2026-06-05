@@ -50,7 +50,7 @@ export function PhaseAlign({ onSolved, onCancel, totalSeconds = 30, dialCount = 
   // a clean side effect of state, never mid-update. Initial state is always
   // misaligned, so this cannot fire on mount.
   useEffect(() => {
-    if (!solvedRef.current && dials.every((r) => r === 0)) {
+    if (!solvedRef.current && dials.length > 0 && dials.every((r) => r === 0)) {
       solvedRef.current = true;
       onSolved();
     }
