@@ -28,12 +28,13 @@ http://<host>:5180/?solo=1&test=1
 | `input` | `{ left, right, jump }` (mutable) | OR-ed into real keyboard reads each frame by `Astronaut.update()`. Set fields directly; `jump` only fires when grounded. |
 | `resetInput()` | `() => void` | Clears all three. The input singleton is **module-global**, so call this between maneuvers and scene restarts. |
 | `getState()` | `() => BridgeState` | Flat snapshot — see below. **Only the Planet scene wires a live `getState`;** in Hub it returns a zeroed state (`sceneKey: ''`), so poll for `sceneKey === 'Planet'` first. |
-| `cast(powerId)` | `'freeze-stars' \| 'summon-platform' \| 'illuminate'` | Routes through `Planet.castPower` (same path as keys 1/2/3 and the phone). |
-| `startPlanet(id)` | `'planet-1' \| 'planet-2' \| ...` | Jumps straight into a planet from Hub *or* Planet. Only launches registry entries that have a `config` (config-less stubs are no-ops). |
+| `cast(powerId)` | `'freeze-stars' \| 'summon-platform' \| 'illuminate' \| 'phase-dash'` | Routes through `Planet.castPower` (same path as keys 1/2/3/4 and the phone). |
+| `startPlanet(id)` | `'planet-1' \| 'planet-2' \| 'planet-3' \| ...` | Jumps straight into a planet from Hub *or* Planet. Only launches registry entries that have a `config` (config-less stubs are no-ops). |
 
 `BridgeState = { sceneKey, won, enemyFrozen, astronautX, astronautY, respawnCount, platformCount,
-darkZonePresent, unlockedPlanets: string[], completed: Record<string, boolean>, lastSfxCue, shakeActive,
-lastBurst, audioState }`.
+darkZonePresent, phaseActive, unlockedPlanets: string[], completed: Record<string, boolean>, lastSfxCue,
+shakeActive, lastBurst, audioState }`.
+`phaseActive` is `true` while a Phase Dash window is open (the astronaut is immune to the hazard lane).
 `unlockedPlanets`/`completed` are read fresh from `loadProgress()` (localStorage) on every call.
 
 ### Juice fields (SFX / shake / particles)
@@ -63,6 +64,7 @@ are **physical** (a blind driver provably fails); one is **perceptual** (only a 
 | **Freeze Stars** | physical | Omit it → the astronaut hits the patrolling sentry → `respawnCount` rises, `won` stays false, `astronautX` never passes the corridor band. |
 | **Summon Platform** | physical | Omit it → the astronaut falls into the pit → `respawnCount` rises, `won` stays false. *(Relies on the kill-floor fix below — and on the pit being wider than a running jump, which is why planet-2's pit is 288px.)* |
 | **Illuminate** | **perceptual** | The hidden-platform collider exists **unconditionally** in `Planet.create()`; Illuminate only fades the cosmetic dark `Rectangle`. A vision-less driver reaches the goal *without* casting it, so **do not** assert "omit → unwinnable." Instead assert `darkZonePresent` flips `true → false` on cast. |
+| **Phase Dash** | physical | Only on planets with a `hazardLane` (planet-3). Omit it → the astronaut hits the full-height "plasma curtain" → `respawnCount` rises, `won` stays false, `astronautX` never crosses the curtain. Cast it → `phaseActive` flips `true` and `astronautX` advances past the curtain with **no** respawn. The curtain is un-passable by *tallness* (a running jump can't clear it or rise above it), so there is no reach-math soft-lock. On planet-3 the curtain sits past the sentry, so the negative test freezes the sentry first to isolate the curtain as the blocker. |
 
 ## Kill-floor fix (`Planet.create`)
 
@@ -84,6 +86,7 @@ reaching y=600, `won` staying false, `maxX` never crossing the pit.
 4. **Negative — omit Freeze** → drive right only; expect `respawnCount` rises, `won` false, `astronautX` stuck before the corridor.
 5. **Negative — omit Platform** → freeze past the sentry, then drive right with no platform; expect `respawnCount` rises (fall into the pit), `won` false.
 6. **Illuminate (perceptual)** → assert `darkZonePresent` `true → false` on cast (not an omit test).
+6b. **Phase Dash (planet-3)** → `startPlanet('planet-3')`. *Negative:* keep the sentry frozen (re-cast every <3s), drive right, expect `respawnCount` rises and `astronautX` never crosses the curtain (max ≈ 555). *Positive:* near the curtain `cast('phase-dash')`, assert `phaseActive === true`, keep driving, expect `astronautX` passes the curtain with `respawnCount` unchanged. A full clear then needs Illuminate + the hidden-ledge mount (fiddly headless; a controlled "stop drifting once elevated near the goal x, hop straight up" maneuver lands it). `lastSfxCue === 'phase'` / `lastBurst.kind === 'phase-dash'` are durable cast signals (survive the 2.5s window expiring).
 7. **Reload durability** → hard reload; read `localStorage['constellation:progress']`; assert the completion + unlock survived.
 8. **Freeze regression** → `cast('freeze-stars')`; assert `enemyFrozen` `false → true → …(3s)… → false`.
 9. **Juice** → after each `cast(id)` assert `lastSfxCue` and `lastBurst.kind` match the power; drive a death
