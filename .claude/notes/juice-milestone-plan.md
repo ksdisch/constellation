@@ -34,10 +34,24 @@ Touched:
 7. Update `docs/AUTONOMY.md` (new bridge fields) + `BACKLOG.md` (move polish item → Done, scoped) + open PR. **Stop before merge to main.**
 
 ## Progress
-- [ ] 1 audio.ts
-- [ ] 2 effects.ts
-- [ ] 3 Boot + bridge
-- [ ] 4 Planet + Astronaut wiring
-- [ ] 5 browser verification
+- [x] 1 audio.ts — committed df35837
+- [x] 2 effects.ts — committed df35837
+- [x] 3 Boot + bridge — committed 38e854e
+- [x] 4 Planet + Astronaut wiring — committed 38e854e (typecheck+build clean, 40 tests pass)
+- [x] 5 browser verification — **all green** at `?solo=1&test=1` (LAN `192.168.1.218:5180`)
 - [ ] 6 adversarial review
 - [ ] 7 docs + PR
+
+## Live verification results (browser, `?solo=1&test=1`)
+| Check | Result |
+|---|---|
+| Bridge present + 4 new fields | ✅ zeroed in Hub, live on Planet |
+| Freeze cast | ✅ `lastSfxCue='freeze'`, burst freeze×14, `enemyFrozen=true`, `audioState='running'`* |
+| Platform cast | ✅ `lastSfxCue='platform'`, burst platform, `platformCount=1` |
+| Illuminate cast | ✅ `lastSfxCue='illuminate'`, burst illuminate, `darkZonePresent` true→false |
+| Death (drive into sentry) | ✅ `lastSfxCue='death'`, burst death, **`shakeActive=true`**, `respawnCount` 0→1 |
+| Full clear (regression) | ✅ `won=true`, `lastSfxCue==='win'`, win burst, `completed['planet-1']`, planet-2 unlocked — Freeze+Platform+Illuminate all used |
+
+*\* `audioState='running'` means the WebAudio context resumed under the headless browser's autoplay handling (no trusted user gesture). It proves the context is live and the cue was requested — it is **not** evidence a real user on a stock browser hears audio. Audibility stays a perceptual/human check, per `docs/AUTONOMY.md`.*
+| No-flag inertness | ✅ `?solo=1` (no `test=1`) → `window.__constellation` undefined, canvas present |
+| Console | only favicon 404s; no errors from juice code |
