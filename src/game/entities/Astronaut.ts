@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { getTestInput } from '../testBridge';
 
 type InputKeys = {
   W: Phaser.Input.Keyboard.Key;
@@ -25,10 +26,16 @@ export class Astronaut {
 
   update() {
     const body = this.sprite.body as Phaser.Physics.Arcade.Body;
-    const left = this.cursors.left?.isDown || this.keys.A.isDown;
-    const right = this.cursors.right?.isDown || this.keys.D.isDown;
+    // Synthetic test input (only non-null when ?test=1) is OR-ed into the real
+    // keyboard reads. In production `t` is null, so this is fully inert.
+    const t = getTestInput();
+    const left = this.cursors.left?.isDown || this.keys.A.isDown || (t?.left ?? false);
+    const right = this.cursors.right?.isDown || this.keys.D.isDown || (t?.right ?? false);
     const jumpPressed =
-      this.cursors.up?.isDown || this.keys.W.isDown || this.cursors.space?.isDown;
+      this.cursors.up?.isDown ||
+      this.keys.W.isDown ||
+      this.cursors.space?.isDown ||
+      (t?.jump ?? false);
 
     if (left) body.setVelocityX(-this.speed);
     else if (right) body.setVelocityX(this.speed);

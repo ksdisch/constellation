@@ -1,3 +1,21 @@
+/**
+ * Optional per-planet visual theme. OPT-IN: a config WITHOUT a `theme` keeps
+ * the default texture keys and camera background, so it renders pixel-identical
+ * to the original look. `background` is a camera background CSS color string
+ * (e.g. "#0b1f3a"); the remaining fields are 0xRRGGBB texture fill colors,
+ * matched 1:1 to the default texture set (ground/ceiling/platform/hidden-
+ * platform/enemy/goal). Boot generates `<key>-<planetId>` textures from these.
+ */
+export type PlanetTheme = {
+  background: string;
+  ground: number;
+  ceiling: number;
+  platform: number;
+  hiddenPlatform: number;
+  enemy: number;
+  goal: number;
+};
+
 export type PlanetConfig = {
   id: string;                                   // 'planet-1'
   name: string;                                 // user-visible title
@@ -10,6 +28,8 @@ export type PlanetConfig = {
   hiddenPlatform: { x: number; y: number };
   darkZone: { x: number; y: number; width: number; height: number };
   fallRespawnY: number;
+  // OPT-IN visual theme. Omit (as planet1Config does) for the default look.
+  theme?: PlanetTheme;
 };
 
 export const planet1Config: PlanetConfig = {

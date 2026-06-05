@@ -8,8 +8,14 @@ export class Enemy {
   private readonly speed = 90;
   private direction: 1 | -1 = 1;
 
-  constructor(scene: Phaser.Scene, x: number, y: number, patrolRange = 140) {
-    this.sprite = scene.physics.add.sprite(x, y, 'enemy');
+  constructor(
+    scene: Phaser.Scene,
+    x: number,
+    y: number,
+    patrolRange = 140,
+    textureKey = 'enemy',
+  ) {
+    this.sprite = scene.physics.add.sprite(x, y, textureKey);
     this.sprite.setCollideWorldBounds(true);
     this.patrolLeft = x - patrolRange;
     this.patrolRight = x + patrolRange;

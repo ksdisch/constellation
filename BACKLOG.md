@@ -19,12 +19,6 @@ Pick items with the `project-backlog` skill in Claude Code.
 - **Size:** S
 - **Added:** 2026-05-12
 
-### [Feature] Planet 2 — ice theme with themed puzzle/power variant
-- **Why:** M4. First test of whether the planet-as-theme structure carries variety. Themed visuals + a twist on existing powers (e.g. slippery ground, freeze power chains across enemies).
-- **Acceptance:** Second playable level with ice/snow tileset, at least one mechanic distinct from Planet 1, and a power-puzzle variant that feels themed (e.g. ice-themed math puzzle, or a sudoku with snowflake symbols).
-- **Size:** L
-- **Added:** 2026-05-12
-
 ### [Feature] Planet 3 — library theme with themed puzzle/power variant
 - **Why:** M4. Second themed planet. Together with ice planet, validates whether 5–10 planets is realistic or if scope needs to shrink.
 - **Acceptance:** Third playable level with library/book tileset, mechanic distinct from Planets 1 and 2, and a themed puzzle variant (e.g. Wordle-like for Illuminate, since reading fits the theme).
@@ -64,6 +58,22 @@ Pick items with the `project-backlog` skill in Claude Code.
 ---
 
 ## Done
+
+### [Feature] Autonomy Substrate — flag-gated test bridge + deterministic input seam + kill-floor fix
+- **Why:** M5. The project's only integration gate was a human "is it fun?" playtest, which blocked autonomous verification of real gameplay. A `?test=1`-gated `window.__constellation` bridge makes the running game *assertable* by a browser driver (read scene state, cast powers, drive the astronaut, jump straight into any planet) — turning "drive the canvas and hope" into "read a boolean."
+- **Acceptance:** New `src/game/testBridge.ts` exposes typed `getState/cast/startPlanet/input` only under `?test=1`; a complete no-op otherwise (asserted by a Vitest test that `window.__constellation` stays undefined). Astronaut gains a deterministic input seam (OR-ed into keyboard, inert in prod). Planet exposes `respawnCount` + bridge providers; Hub exposes `startPlanet`. Documented in `docs/AUTONOMY.md`.
+- **Size:** M
+- **Added:** 2026-06-05
+- **Completed:** 2026-06-05
+- **Note:** Built by the autonomous `substrate-planet2-build` workflow (plan → implement → self-gated typecheck/build/test → adversarial diff review → live browser verification). Also fixed a latent **kill-floor bug**: `setCollideWorldBounds(true)` clamped pit falls at y≈516 so `fallRespawnY=600` was unreachable (dead respawn code) — `Planet.create()` now sets `world.checkCollision.down = false` so a missed pit jump respawns. This made Summon Platform genuinely load-bearing. No protocol/server/dependency changes; phone untouched; planet-1 pixel-identical.
+
+### [Feature] Planet 2 — "Stellar Winds" (ICE theme, registry drop-in)
+- **Why:** M4/M5. First net-new playable content since M3 and the first proof the data-driven `PlanetConfig` + registry chain carries variety. Completing it durably unlocks planet-3.
+- **Acceptance:** Second playable level with an ICE palette (cold-blue ground/ceiling/platform, slate background) keyed off an opt-in `PlanetConfig.theme`; a distinct layout (powers in a new order: bridge → freeze → illuminate) with an **un-jumpable 288px pit** so Summon Platform is physically required; wired into the registry as a one-line drop-in; Vitest structural + unlock-chain tests; browser-proven clear.
+- **Size:** L
+- **Added:** 2026-05-12
+- **Completed:** 2026-06-05
+- **Note:** Live-verified at `?solo=1&test=1`: ICE theme renders, planet-1 win durably unlocks planet-2 across reload, omit-platform now respawns (load-bearing). Reuses the existing three puzzles — a **themed puzzle variant** (e.g. snowflake-symbol math) remains a follow-up. Illuminate is *perceptually* (not physically) load-bearing by design, since the hidden-platform collider always exists.
 
 ### [Feature] Solo dev mode — fake the phone side for solo level testing
 - **Why:** Listed as an open question in the plan with a "lean yes" stance. Hugely useful for iterating on levels without scheduling co-op time. Without it, every level test requires two people and two devices.

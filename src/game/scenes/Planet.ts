@@ -5,6 +5,8 @@ import type { GameNetClient } from '../net/client';
 import type { PowerId } from '../../shared/protocol';
 import type { PlanetConfig } from '../planets/planet1';
 import { loadProgress, markPlanetComplete, saveProgress } from '../progression/save';
+import { PLANETS } from '../planets/registry';
+import { isTestMode, setBridgeProviders } from '../testBridge';
 
 const FREEZE_DURATION_MS = 3000;
 const PLATFORM_LIFETIME_MS = 5000;
@@ -21,9 +23,21 @@ export class PlanetScene extends Phaser.Scene {
   private won = false;
   private solo = false;
   private config!: PlanetConfig;
+  // Counts respawns (pit-fall or enemy hit) for the test bridge snapshot.
+  private respawnCount = 0;
 
   constructor() {
     super({ key: 'Planet' });
+  }
+
+  /**
+   * Resolve a texture key against the active config's theme. With a theme set,
+   * returns the per-planet key `<key>-<id>` (generated in Boot); without one,
+   * returns the default key unchanged. Planet-1 has no theme, so every lookup
+   * returns the original key and its render path is pixel-identical.
+   */
+  private tex(key: string): string {
+    return this.config.theme ? `${key}-${this.config.id}` : key;
   }
 
   // `unlockedPlanets` is part of the scene-data contract (Hub passes it), but
@@ -34,17 +48,31 @@ export class PlanetScene extends Phaser.Scene {
     this.config = data.config;
     this.solo = data.solo ?? false;
     this.won = false;
+    this.respawnCount = 0;
   }
 
   create() {
+    // Opt-in themed camera background. Default (themeless) planets keep the
+    // game-config background, so planet-1 is visually unchanged.
+    if (this.config.theme) {
+      this.cameras.main.setBackgroundColor(this.config.theme.background);
+    }
+
+    // The floor is the ground tiles, NOT the world's bottom edge. Disabling the
+    // world bottom edge lets a missed pit jump fall past `fallRespawnY` (600,
+    // below the 540 canvas) so the update() respawn fires — otherwise
+    // setCollideWorldBounds(true) clamps the fall at y≈516 and the astronaut
+    // soft-locks in the pit. This makes Summon Platform genuinely load-bearing.
+    this.physics.world.checkCollision.down = false;
+
     const ground = this.physics.add.staticGroup();
     for (let x = 32; x < 960; x += 64) {
       if (x >= this.config.pit.startX && x < this.config.pit.endX) continue;
-      ground.create(x, 520, 'ground');
+      ground.create(x, 520, this.tex('ground'));
     }
 
     const ceiling = this.physics.add.staticGroup();
-    ceiling.create(this.config.corridor.x, 360, 'ceiling');
+    ceiling.create(this.config.corridor.x, 360, this.tex('ceiling'));
 
     this.platforms = this.physics.add.staticGroup();
 
@@ -52,7 +80,7 @@ export class PlanetScene extends Phaser.Scene {
     const hiddenPlatform = this.hiddenPlatforms.create(
       this.config.hiddenPlatform.x,
       this.config.hiddenPlatform.y,
-      'hidden-platform',
+      this.tex('hidden-platform'),
     ) as Phaser.Physics.Arcade.Sprite;
     hiddenPlatform.refreshBody();
 
@@ -113,7 +141,7 @@ export class PlanetScene extends Phaser.Scene {
     this.physics.add.collider(this.astronaut.sprite, this.platforms);
     this.physics.add.collider(this.astronaut.sprite, this.hiddenPlatforms);
 
-    this.enemy = new Enemy(this, this.config.corridor.x, 435);
+    this.enemy = new Enemy(this, this.config.corridor.x, 435, 140, this.tex('enemy'));
     this.physics.add.collider(this.enemy.sprite, ground);
 
     this.physics.add.overlap(this.astronaut.sprite, this.enemy.sprite, () => {
@@ -121,7 +149,7 @@ export class PlanetScene extends Phaser.Scene {
       this.resetAstronaut();
     });
 
-    const goal = this.physics.add.staticSprite(this.config.goal.x, this.config.goal.y, 'goal');
+    const goal = this.physics.add.staticSprite(this.config.goal.x, this.config.goal.y, this.tex('goal'));
     this.tweens.add({
       targets: goal,
       y: this.config.goal.y - 8,
@@ -133,6 +161,31 @@ export class PlanetScene extends Phaser.Scene {
     this.physics.add.overlap(this.astronaut.sprite, goal, () => {
       if (!this.won) this.showWin();
     });
+
+    // Wire the flag-gated test bridge providers. Inert unless ?test=1: the
+    // getState closure reads the live scene, cast/startPlanet drive it. All
+    // entities above are constructed, so the closures capture valid refs.
+    if (isTestMode()) {
+      setBridgeProviders({
+        getState: () => {
+          const progress = loadProgress();
+          return {
+            sceneKey: 'Planet',
+            won: this.won,
+            enemyFrozen: this.enemy.isFrozen,
+            astronautX: this.astronaut.sprite.x,
+            astronautY: this.astronaut.sprite.y,
+            respawnCount: this.respawnCount,
+            platformCount: this.platforms.getChildren().length,
+            darkZonePresent: this.darkZone !== null,
+            unlockedPlanets: progress.unlockedPlanets,
+            completed: progress.completed,
+          };
+        },
+        cast: (id) => this.castPower(id),
+        startPlanet: (id) => this.startPlanetById(id),
+      });
+    }
   }
 
   update() {
@@ -183,7 +236,7 @@ export class PlanetScene extends Phaser.Scene {
   }
 
   private summonPlatform() {
-    const sprite = this.platforms.create(this.config.platformDrop.x, this.config.platformDrop.y, 'platform') as Phaser.Physics.Arcade.Sprite;
+    const sprite = this.platforms.create(this.config.platformDrop.x, this.config.platformDrop.y, this.tex('platform')) as Phaser.Physics.Arcade.Sprite;
     sprite.setAlpha(0);
     sprite.refreshBody();
     this.tweens.add({ targets: sprite, alpha: 1, duration: 200 });
@@ -197,7 +250,25 @@ export class PlanetScene extends Phaser.Scene {
     });
   }
 
+  /**
+   * Test-bridge navigation: jump straight to a planet by id. Looks up the
+   * registry; only launches entries that have an authored config. Forwards the
+   * current persisted unlock set so the new scene's launch contract is intact.
+   */
+  private startPlanetById(id: string) {
+    const entry = PLANETS.find((p) => p.id === id);
+    if (entry?.config) {
+      this.scene.start('Planet', {
+        net: this.net,
+        config: entry.config,
+        solo: this.solo,
+        unlockedPlanets: new Set(loadProgress().unlockedPlanets),
+      });
+    }
+  }
+
   private resetAstronaut() {
+    this.respawnCount += 1;
     const body = this.astronaut.sprite.body as Phaser.Physics.Arcade.Body;
     this.astronaut.sprite.setPosition(this.config.spawn.x, this.config.spawn.y);
     body.setVelocity(0, 0);
