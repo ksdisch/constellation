@@ -85,6 +85,16 @@ Repo-local Claude Code slash commands (`.claude/commands/`) and skills (`.claude
 
 **Skills** (auto-trigger by description, or invoke explicitly)
 
+- `new-power` — scaffold a new astronaut power across every side of the power contract (protocol `PowerId` → Spellbook tile → puzzle component cloned from `QuickMath.tsx` → `App.tsx` `FEEDBACK` + render chain → `castPower()` switch in `Planet.ts`). Invoke with `/new-power` after the power is designed. *Repo-specific (built here).*
 - 💻 `match-the-mock` — **local-only**: implement a UI against a mock/Figma and iterate via screenshots until it matches. Auto-triggering sibling of `/screenshot-iterate`.
+
+**Subagents** (role prompts in `.claude/agents/` — dispatched inline via `subagent_type: "general-purpose"`, NOT registered subagent types; see the file header)
+
+- `power-contract-reviewer` — read-only audit of a diff for the power contract + wire-protocol boundary; PASS/FAIL with `file:line` evidence. Catches the two sides the compiler does *not* guard (the Spellbook tile and the `App.tsx` render `if`-chain). *Repo-specific (built here).*
+
+**Hooks** (`.claude/settings.json` → scripts in `.claude/hooks/`, shared with collaborators)
+
+- `protocol-boundary-guard` (PreToolUse) — non-blocking reminder when `src/shared/protocol.ts` is edited: update both clients in the same commit; wire the full power contract.
+- `typecheck-on-edit` (PostToolUse) — runs `tsc --noEmit` after `*.ts/*.tsx` edits and feeds errors back (blocking; flip the trailing `exit 2`→`exit 0` in the script to make it advisory).
 
 To vendor more of your global commands/skills or brainstorm new repo-specific automations, run `/claudify-repo`.
