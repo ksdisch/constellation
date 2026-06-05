@@ -4,6 +4,7 @@ import { Enemy } from '../entities/Enemy';
 import type { GameNetClient } from '../net/client';
 import type { PowerId } from '../../shared/protocol';
 import type { PlanetConfig } from '../planets/planet1';
+import { loadProgress, markPlanetComplete, saveProgress } from '../progression/save';
 
 const FREEZE_DURATION_MS = 3000;
 const PLATFORM_LIFETIME_MS = 5000;
@@ -20,17 +21,18 @@ export class PlanetScene extends Phaser.Scene {
   private won = false;
   private solo = false;
   private config!: PlanetConfig;
-  private unlockedPlanets: Set<string> = new Set();
 
   constructor() {
     super({ key: 'Planet' });
   }
 
+  // `unlockedPlanets` is part of the scene-data contract (Hub passes it), but
+  // Planet no longer tracks it: on win, showWin() derives the authoritative
+  // unlock state from persisted progress (loadProgress + markPlanetComplete).
   init(data: { net: GameNetClient; config: PlanetConfig; solo?: boolean; unlockedPlanets?: Set<string> }) {
     this.net = data.net;
     this.config = data.config;
     this.solo = data.solo ?? false;
-    this.unlockedPlanets = data.unlockedPlanets ?? new Set();
     this.won = false;
   }
 
@@ -229,6 +231,13 @@ export class PlanetScene extends Phaser.Scene {
     this.won = true;
     (this.astronaut.sprite.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0);
 
+    // Durably record the completion: mark this planet complete (which unlocks
+    // the next in the chain) and persist. markPlanetComplete is pure, so we
+    // read the latest persisted state, derive the new state, and save it.
+    const next = markPlanetComplete(loadProgress(), this.config.id);
+    saveProgress(next);
+    const nextUnlocked = new Set(next.unlockedPlanets);
+
     this.add.rectangle(480, 270, 960, 540, 0x000000, 0.65);
     this.add
       .text(480, 240, 'Level complete!', {
@@ -257,7 +266,8 @@ export class PlanetScene extends Phaser.Scene {
       net: this.net,
       config: this.config,
       solo: this.solo,
-      unlockedPlanets: this.unlockedPlanets,
+      // Fresh clone per button so no scene shares a mutable Set reference.
+      unlockedPlanets: new Set(nextUnlocked),
     }));
 
     // "Return to Hub" — right button, slate
@@ -277,7 +287,8 @@ export class PlanetScene extends Phaser.Scene {
     hubButton.on('pointerdown', () => this.scene.start('Hub', {
       net: this.net,
       solo: this.solo,
-      unlockedPlanets: this.unlockedPlanets,
+      // Fresh clone per button so no scene shares a mutable Set reference.
+      unlockedPlanets: new Set(nextUnlocked),
     }));
   }
 }

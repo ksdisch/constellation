@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GameNetClient } from '../net/client';
+import { loadProgress } from '../progression/save';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -19,10 +20,13 @@ export class BootScene extends Phaser.Scene {
     if (isSolo) {
       const net = new GameNetClient();
       // Do not call net.connect() — solo mode bypasses the relay entirely.
+      // Derive durable unlock state from persisted progress; the scene-data
+      // contract still passes a Set<string> so Hub is unchanged downstream.
+      const unlockedPlanets = new Set(loadProgress().unlockedPlanets);
       this.scene.start('Hub', {
         net,
         solo: true,
-        unlockedPlanets: new Set(['planet-1']),
+        unlockedPlanets,
       });
     } else {
       this.scene.start('Lobby');

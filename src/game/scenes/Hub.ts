@@ -1,8 +1,22 @@
 import Phaser from 'phaser';
 import type { GameNetClient } from '../net/client';
-import { planet1Config } from '../planets/planet1';
+import { PLANETS, type PlanetRegistryEntry } from '../planets/registry';
+import { loadProgress } from '../progression/save';
+import { nodeStateFor } from '../progression/nodeStateFor';
 
 type Star = { x: number; y: number; r: number; alpha: number };
+
+/** Per-state node visuals — keeps the starfield palette consistent. */
+const NODE_STYLE = {
+  completed: { color: 0x98ffc8, radius: 40, labelColor: '#ffffff' },
+  unlocked: { color: 0x7ad8ff, radius: 40, labelColor: '#ffffff' },
+  // Dimmer cyan so a launchable stub reads as "available but not built yet".
+  stub: { color: 0x4a7a8a, radius: 34, labelColor: '#a8b0d8' },
+  locked: { color: 0x3a3a4a, radius: 30, labelColor: '#a8b0d8' },
+} as const;
+
+const NODE_ROW_Y = 270;
+const NODE_LABEL_Y = 330;
 
 const STARS: Star[] = [
   { x: 60, y: 40, r: 1, alpha: 0.7 },
@@ -31,6 +45,7 @@ export class HubScene extends Phaser.Scene {
   private net!: GameNetClient;
   private solo = false;
   private unlockedPlanets: Set<string> = new Set();
+  private comingSoonText?: Phaser.GameObjects.Text;
 
   constructor() {
     super({ key: 'Hub' });
@@ -67,46 +82,88 @@ export class HubScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    // Planet 1 — interactive cyan node
-    const planet1Unlocked = this.unlockedPlanets.has('planet-1');
-    const planet1Node = this.add.circle(230, 270, 40, planet1Unlocked ? 0x7ad8ff : 0x3a3a4a);
-    if (planet1Unlocked) {
-      planet1Node.setInteractive({ useHandCursor: true });
-      planet1Node.on('pointerdown', () => {
-        this.scene.start('Planet', {
-          net: this.net,
-          config: planet1Config,
-          solo: this.solo,
-          unlockedPlanets: this.unlockedPlanets,
-        });
+    // Render one node per registry entry, mapped through nodeStateFor so the
+    // chain lights up automatically as planets get completed. Reading from
+    // loadProgress() keeps the node visuals durable across reloads. Use that
+    // SAME persisted state as the launch-contract Set we forward downstream so
+    // visuals and behavior share one source of truth (no scene-data drift).
+    const progress = loadProgress();
+    this.unlockedPlanets = new Set(progress.unlockedPlanets);
+    PLANETS.forEach((entry, index) => {
+      this.renderNode(entry, index, nodeStateFor(progress, entry.id));
+    });
+  }
+
+  /** Even horizontal spread across the canvas for N nodes. */
+  private nodeX(index: number): number {
+    const gap = 960 / (PLANETS.length + 1);
+    return Math.round(gap * (index + 1));
+  }
+
+  private renderNode(
+    entry: PlanetRegistryEntry,
+    index: number,
+    state: 'completed' | 'unlocked' | 'locked',
+  ) {
+    const x = this.nodeX(index);
+    // An unlocked entry with no config is a registered stub: launchable-looking
+    // but it shows "Coming soon" instead of starting a planet.
+    const isStub = state !== 'locked' && entry.config === undefined;
+    const style =
+      state === 'locked'
+        ? NODE_STYLE.locked
+        : isStub
+          ? NODE_STYLE.stub
+          : NODE_STYLE[state];
+
+    const node = this.add.circle(x, NODE_ROW_Y, style.radius, style.color);
+
+    if (state !== 'locked') {
+      node.setInteractive({ useHandCursor: true });
+      node.on('pointerdown', () => {
+        if (entry.config) {
+          this.scene.start('Planet', {
+            net: this.net,
+            config: entry.config,
+            solo: this.solo,
+            // Clone so no scene shares a mutable Set reference.
+            unlockedPlanets: new Set(this.unlockedPlanets),
+          });
+        } else {
+          this.showComingSoon(x);
+        }
       });
     }
-    this.add
-      .text(230, 330, planet1Unlocked ? 'Constellation' : '?', {
-        fontFamily: 'system-ui, sans-serif',
-        fontSize: '16px',
-        color: planet1Unlocked ? '#ffffff' : '#a8b0d8',
-      })
-      .setOrigin(0.5);
 
-    // Planet 2 — locked placeholder
-    this.add.circle(480, 270, 30, 0x3a3a4a);
     this.add
-      .text(480, 330, '?', {
+      .text(x, NODE_LABEL_Y, state === 'locked' ? '?' : entry.label, {
         fontFamily: 'system-ui, sans-serif',
         fontSize: '16px',
-        color: '#a8b0d8',
+        color: style.labelColor,
       })
       .setOrigin(0.5);
+  }
 
-    // Planet 3 — locked placeholder
-    this.add.circle(730, 270, 30, 0x3a3a4a);
-    this.add
-      .text(730, 330, '?', {
+  /** Gentle, self-clearing "Coming soon" feedback for config-less stubs. */
+  private showComingSoon(x: number) {
+    if (this.comingSoonText) this.comingSoonText.destroy();
+    const text = this.add
+      .text(x, NODE_LABEL_Y + 34, 'Coming soon', {
         fontFamily: 'system-ui, sans-serif',
-        fontSize: '16px',
-        color: '#a8b0d8',
+        fontSize: '13px',
+        color: '#7ad8ff',
       })
       .setOrigin(0.5);
+    this.comingSoonText = text;
+    this.tweens.add({
+      targets: text,
+      alpha: 0,
+      duration: 1200,
+      delay: 600,
+      onComplete: () => {
+        text.destroy();
+        if (this.comingSoonText === text) this.comingSoonText = undefined;
+      },
+    });
   }
 }
