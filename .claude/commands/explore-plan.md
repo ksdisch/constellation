@@ -12,6 +12,9 @@ approve a plan. (If no task was given above, ask me what to work on first.)
 - Identify and read the files relevant to the task. Follow imports and call sites
   until you actually understand how the affected code works — don't skim.
 - If the task references an issue number, read it first (e.g. `gh issue view <n>`).
+- For broad or uncertain searches across many files, delegate to a fast **Explore
+  subagent** (cheaper model) that returns conclusions — don't flood the main context
+  with full-file dumps.
 - Do not modify any files in this phase.
 
 ## 2. Plan (think hard — don't touch files)

@@ -29,6 +29,8 @@ me what behavior to specify first.)
   edit the tests to fit the code. If a test itself is genuinely wrong, stop and
   tell me — don't silently change it.
 - Loop until everything is green.
+- Keep the loop cheap: re-run only the relevant test(s), and don't re-read files you
+  haven't changed.
 
 ## 5. Commit
 - Commit the passing implementation. Don't push unless I explicitly say so.
