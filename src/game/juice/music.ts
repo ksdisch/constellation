@@ -1,0 +1,247 @@
+/**
+ * Procedural ambient-music engine.
+ *
+ * Native WebAudio only — no asset files, no dependency — the structural twin of
+ * {@link ./audio}. A named {@link TrackName} maps to a {@link TrackSpec}: a
+ * looping pentatonic motif of soft, long-enveloped tones over a quiet sustained
+ * drone. Generative and asset-free, so it fits the locked, asset-free stack.
+ *
+ * Testability mirrors the SFX engine. Tracks play through an injectable
+ * {@link MusicSink}; the default sink lazily builds a real `AudioContext` + a
+ * lookahead scheduler on first `start`, so *importing* this module never touches
+ * WebAudio (safe under jsdom/SSR, where there is no `AudioContext` and
+ * `startMusic` simply records the track and plays nothing). Tests inject a mock
+ * sink and assert the table + dispatch with no real audio and no timers.
+ */
+
+import { webAudioCtor } from './audio';
+
+export type TrackName = 'hub' | 'planet';
+
+/** A generative ambient loop: a pentatonic motif over an optional drone. */
+export type TrackSpec = {
+  waveform: OscillatorType;
+  rootFreq: number; // tonic, Hz
+  scale: number[]; // semitone offsets from the tonic (one octave-ish)
+  sequence: number[]; // indices into `scale`, the looping motif
+  stepSeconds: number; // seconds per motif step
+  noteGain: number; // peak gain per melody note (quiet — an ambient bed)
+  droneGain: number; // peak gain of the sustained sub-octave drone (0 = none)
+};
+
+/**
+ * The track registry — the pure, Vitest-asserted contract. Two cozy beds: the
+ * hub airy and sparse (a slow, high major-pentatonic wander), the planet warmer
+ * and a touch more present (a lower minor-pentatonic roll). Gains are
+ * deliberately tiny — this is a background bed under the SFX, not a soundtrack.
+ */
+export const TRACKS: Record<TrackName, TrackSpec> = {
+  hub: {
+    waveform: 'sine',
+    rootFreq: 261.63, // C4
+    scale: [0, 2, 4, 7, 9, 12], // major pentatonic + octave
+    sequence: [0, 2, 4, 3, 5, 4, 2, 1],
+    stepSeconds: 0.9,
+    noteGain: 0.07,
+    droneGain: 0.025,
+  },
+  planet: {
+    waveform: 'triangle',
+    rootFreq: 196.0, // G3
+    scale: [0, 3, 5, 7, 10, 12], // minor pentatonic + octave
+    sequence: [0, 2, 1, 3, 2, 4, 3, 1],
+    stepSeconds: 0.7,
+    noteGain: 0.06,
+    droneGain: 0.03,
+  },
+};
+
+/** A loop target the engine drives. Swappable for tests. */
+export interface MusicSink {
+  /** (Re)start looping `spec`, replacing any track already playing. */
+  start(spec: TrackSpec): void;
+  /** Stop and tear down the current loop. Idempotent. */
+  stop(): void;
+  /** Underlying context state, for observability ('suspended' | 'running' | …). */
+  readonly state: string;
+  /** True while a loop is scheduling. */
+  readonly playing: boolean;
+}
+
+// Standard WebAudio lookahead scheduler constants.
+const LOOKAHEAD_MS = 50; // how often the scheduler wakes
+const SCHEDULE_AHEAD = 0.2; // seconds of audio scheduled past `currentTime`
+
+/** Default sink: a real WebAudio graph driving a generative loop + drone. */
+class WebAudioMusicSink implements MusicSink {
+  private master!: GainNode;
+  private drone: OscillatorNode | null = null;
+  private droneGainNode: GainNode | null = null;
+  private timer: ReturnType<typeof setInterval> | null = null;
+  private spec: TrackSpec | null = null;
+  private nextNoteTime = 0;
+  private stepIndex = 0;
+  private isPlaying = false;
+
+  constructor(private readonly ctx: AudioContext) {}
+
+  get state(): string {
+    return this.ctx.state;
+  }
+
+  get playing(): boolean {
+    return this.isPlaying;
+  }
+
+  start(spec: TrackSpec): void {
+    this.stopInternal();
+    if (this.ctx.state === 'suspended') void this.ctx.resume();
+    this.master = this.ctx.createGain();
+    this.master.gain.setValueAtTime(1, this.ctx.currentTime);
+    this.master.connect(this.ctx.destination);
+    this.spec = spec;
+    this.stepIndex = 0;
+    this.nextNoteTime = this.ctx.currentTime + 0.1;
+    this.startDrone(spec);
+    this.timer = setInterval(() => this.scheduler(), LOOKAHEAD_MS);
+    this.isPlaying = true;
+  }
+
+  stop(): void {
+    this.stopInternal();
+  }
+
+  /** Schedule any melody notes that fall inside the lookahead window. */
+  private scheduler(): void {
+    const spec = this.spec;
+    if (!spec) return;
+    while (this.nextNoteTime < this.ctx.currentTime + SCHEDULE_AHEAD) {
+      const idx = spec.sequence[this.stepIndex % spec.sequence.length];
+      const semitone = spec.scale[idx % spec.scale.length];
+      const freq = spec.rootFreq * Math.pow(2, semitone / 12);
+      this.scheduleNote(this.nextNoteTime, freq, spec);
+      this.nextNoteTime += spec.stepSeconds;
+      this.stepIndex += 1;
+    }
+  }
+
+  /** One soft-enveloped melody tone at `time`. */
+  private scheduleNote(time: number, freq: number, spec: TrackSpec): void {
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = spec.waveform;
+    osc.frequency.setValueAtTime(freq, time);
+    const dur = spec.stepSeconds * 0.92;
+    const attack = Math.min(0.12, dur * 0.3);
+    g.gain.setValueAtTime(0.0001, time);
+    g.gain.linearRampToValueAtTime(spec.noteGain, time + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, time + dur);
+    osc.connect(g);
+    g.connect(this.master);
+    osc.start(time);
+    osc.stop(time + dur + 0.02);
+  }
+
+  /** A sustained sub-octave drone under the motif (skipped if droneGain is 0). */
+  private startDrone(spec: TrackSpec): void {
+    if (spec.droneGain <= 0) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = spec.waveform;
+    osc.frequency.setValueAtTime(spec.rootFreq / 2, now);
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.linearRampToValueAtTime(spec.droneGain, now + 1.2);
+    osc.connect(g);
+    g.connect(this.master);
+    osc.start(now);
+    this.drone = osc;
+    this.droneGainNode = g;
+  }
+
+  private stopInternal(): void {
+    if (this.timer !== null) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+    const now = this.ctx.currentTime;
+    // Brief fade so switching tracks doesn't click.
+    if (this.droneGainNode) {
+      try {
+        this.droneGainNode.gain.cancelScheduledValues(now);
+        this.droneGainNode.gain.setValueAtTime(this.droneGainNode.gain.value, now);
+        this.droneGainNode.gain.linearRampToValueAtTime(0.0001, now + 0.2);
+      } catch {
+        /* context may be closed — nothing to fade */
+      }
+    }
+    if (this.drone) {
+      try {
+        this.drone.stop(now + 0.25);
+      } catch {
+        /* already stopped */
+      }
+      this.drone = null;
+    }
+    this.droneGainNode = null;
+    this.spec = null;
+    this.isPlaying = false;
+  }
+}
+
+let sink: MusicSink | null = null;
+let currentTrack: TrackName | null = null;
+
+/**
+ * Inject a sink (tests) or drop the current one (pass null). With no sink set,
+ * the engine lazily builds a {@link WebAudioMusicSink} on the next start — or,
+ * where WebAudio is unavailable, plays nothing while still recording the track.
+ */
+export function setMusicSink(s: MusicSink | null): void {
+  sink = s;
+}
+
+function resolveSink(): MusicSink | null {
+  if (sink) return sink;
+  const Ctor = webAudioCtor();
+  if (!Ctor) return null;
+  sink = new WebAudioMusicSink(new Ctor());
+  return sink;
+}
+
+/**
+ * Start (or switch to) a named track. Idempotent for the already-playing track,
+ * so a scene restart re-calling `startMusic('planet')` keeps the loop seamless
+ * rather than restarting it. Records `currentTrack` regardless of audibility so
+ * the test bridge can assert the track even when the context is suspended
+ * (autoplay policy) or absent (jsdom).
+ */
+export function startMusic(track: TrackName): void {
+  if (track === currentTrack && sink?.playing) return;
+  currentTrack = track;
+  const s = resolveSink();
+  if (!s) return;
+  s.start(TRACKS[track]);
+}
+
+/** Stop all music and clear the active track. */
+export function stopMusic(): void {
+  currentTrack = null;
+  sink?.stop();
+}
+
+/** The track currently playing (for the test bridge), or null when stopped. */
+export function getMusicTrack(): TrackName | null {
+  return currentTrack;
+}
+
+/** The current audio-context state, or 'unavailable' when no sink exists yet. */
+export function getMusicState(): string {
+  return sink ? sink.state : 'unavailable';
+}
+
+/** Test helper: clear the active track and drop any sink. */
+export function resetMusic(): void {
+  currentTrack = null;
+  sink = null;
+}
