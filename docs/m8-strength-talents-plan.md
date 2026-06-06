@@ -107,9 +107,10 @@ boost crossed the wire and the game branched on it.
 ## Progress
 
 - [x] Plan doc + scope cuts
-- [ ] Strength core: `talents.ts` `kind` + nodes + `strengthFor` + tests
-- [ ] Boosted-cast wire: protocol + relay + game + phone + bridge
-- [ ] Per-planet stardust: `planet-complete` + phone earn + toast
-- [ ] TalentTree kind badge
-- [ ] typecheck / build / test green; adversarial review
-- [ ] BACKLOG + AUTONOMY docs updated; PR opened
+- [x] Strength core: `talents.ts` `kind` + nodes + `strengthFor` + tests
+- [x] Boosted-cast wire: protocol + relay + game + phone + bridge
+- [x] Per-planet stardust: `planet-complete` + phone earn + toast
+- [x] TalentTree kind badge
+- [x] Pure `relayForward()` extracted + tested; allowlist made explicit
+- [x] typecheck / build / 105 Vitest green; real-socket relay smoke (boosted + planet-complete round-trip)
+- [x] BACKLOG + AUTONOMY + CLAUDE docs updated; PR opened

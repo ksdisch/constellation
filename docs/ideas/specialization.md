@@ -1,6 +1,13 @@
 # Player Specialization (Phone-Side)
 
-**Status:** v1 SHIPPED (M7, accommodation branch) — see `docs/m7-talents-plan.md`. This doc remains the design rationale; the "open questions" below were resolved for v1 as: **earn per puzzle solved** (phone-local, no protocol change), **accommodation branch only** (strength needs laptop-side payoff coupling — deferred), **8 nodes / 4 branches / 2 tiers**, persisted in `localStorage`. Remaining open: per-planet earning (needs a `game→phone` wire message), the strength branch, and laptop-side visibility/theming.
+**Status:** v1 SHIPPED (M7, accommodation) + v2 SHIPPED (M8, strength) — see `docs/m7-talents-plan.md`
+and `docs/m8-strength-talents-plan.md`. M7 resolved: **earn per puzzle solved**, **accommodation only**,
+**8 nodes**, `localStorage`. M8 closed the remaining open items: the **strength branch** (3 nodes, one per
+duration-based power) couples to laptop power magnitude — which doubles as **laptop-side visibility** (a
+boosted cast is a louder banner + burst); **per-planet earning** landed as the `game→phone`
+`planet-complete` message (+3 stardust). Strength deliberately makes the *partner's* power stronger, not
+the caster's puzzle harder. Still open / out of scope: laptop-side *theming* beyond the boosted-cast feedback,
+respec/reset systems, and any talent that changes the astronaut's own skill ceiling.
 
 ## Premise
 
