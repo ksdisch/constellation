@@ -33,7 +33,7 @@ http://<host>:5180/?solo=1&test=1
 
 `BridgeState = { sceneKey, won, enemyFrozen, astronautX, astronautY, respawnCount, platformCount,
 darkZonePresent, phaseActive, unlockedPlanets: string[], completed: Record<string, boolean>, lastSfxCue,
-shakeActive, lastBurst, audioState }`.
+shakeActive, lastBurst, audioState, musicTrack, musicState }`.
 `phaseActive` is `true` while a Phase Dash window is open (the astronaut is immune to the hazard lane).
 `unlockedPlanets`/`completed` are read fresh from `loadProgress()` (localStorage) on every call.
 
@@ -47,6 +47,8 @@ The last four fields make the M5 juice layer assertable:
 | `shakeActive` | `boolean` | True while `cameras.main` is mid-shake. Fires on `death` and `win`. |
 | `lastBurst` | `{ kind, count } \| null` | The most recent particle burst's event + particle count. |
 | `audioState` | `string` | The WebAudio context state: `'unavailable'` (no sink yet), `'suspended'`, or `'running'`. |
+| `musicTrack` | `string \| null` | The active ambient track: `'planet'` in a level, `'hub'` on the hub, `null` when stopped. Module-global like `lastSfxCue`. **Only the Planet scene wires `getState`,** so a bridge read always sees `'planet'` there; the hub track is covered by `music.test.ts`, not the bridge. |
+| `musicState` | `string` | The music engine's WebAudio context state (`'unavailable' \| 'suspended' \| 'running'`). Same perceptual autoplay-resume caveat as `audioState`. |
 
 **Audibility is perceptual, like Illuminate.** `lastSfxCue` proves the cue was *requested* and `audioState`
 proves whether the context actually resumed — but whether a human *hears* it depends on the browser's
@@ -99,5 +101,6 @@ reaching y=600, `won` staying false, `maxX` never crossing the pit.
 - **Hub `getState` is zeroed** — always wait for `sceneKey === 'Planet'` before reading scene fields.
 - **`input` is module-global** — `resetInput()` between maneuvers, or a stuck `right` walks across restarts.
 - **Platform lifetime** — summoned platforms fade after 5000ms; a slow driver must re-cast when `platformCount===0`.
+- **Follow camera (M5)** — the planet camera now lerp-follows the astronaut horizontally (vertical is locked; `showWin()` recentres the frame for the end-card). `astronautX/Y` are **world** coords and are unaffected, but this is one more reason to assert on `won`/state, never on-screen pixels. The widened bounds are the *camera*'s only — physics world bounds (and thus reach-math) are unchanged.
 - **Driving live physics is the flake source** — prefer the deterministic `input` seam over synthetic keystrokes, poll state rather than sleeping fixed times, and assert on `won`/state, not pixels. (Mounting a stepping-stone platform headlessly is genuinely fiddly; the simplest robust positive clear is planet-1.)
 - The committed driver is an **MCP/Playwright playbook**, not a re-runnable in-repo suite (the stack is locked — no Playwright dependency). The durable, CI-able assertions live in Vitest (`*.test.ts`).
