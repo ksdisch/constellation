@@ -78,6 +78,24 @@ export const EFFECTS: Record<JuiceEvent, EffectSpec> = {
   },
 };
 
+/** How much a strength-boosted cast (M8) amplifies its particle burst. */
+export const BOOST_COUNT_MULTIPLIER = 1.6;
+export const BOOST_SPEED_MULTIPLIER = 1.2;
+
+/**
+ * Pure: a louder copy of a burst for a strength-boosted cast — more particles
+ * flung a bit harder. Returns a NEW spec; never mutates the input (the EFFECTS
+ * table stays canonical). Color / lifespan / scale are unchanged so it reads as
+ * the SAME power, just bigger.
+ */
+export function amplify(spec: BurstSpec): BurstSpec {
+  return {
+    ...spec,
+    count: Math.round(spec.count * BOOST_COUNT_MULTIPLIER),
+    speed: Math.round(spec.speed * BOOST_SPEED_MULTIPLIER),
+  };
+}
+
 export type BurstInfo = { kind: JuiceEvent; count: number };
 
 /**
@@ -94,15 +112,22 @@ export class JuiceController {
     this.scene = scene;
   }
 
-  /** Fire the juice for `event`; the burst (if any) is placed at (x, y). */
-  trigger(event: JuiceEvent, x = 0, y = 0): void {
+  /**
+   * Fire the juice for `event`; the burst (if any) is placed at (x, y). When
+   * `boosted` is true (a strength-talent cast, M8) the burst is amplified — more
+   * particles, flung a little harder — so the laptop player can SEE that their
+   * partner invested in this power. The pure {@link EFFECTS} table is never
+   * mutated; the boost is applied locally to a copy.
+   */
+  trigger(event: JuiceEvent, x = 0, y = 0, boosted = false): void {
     const spec = EFFECTS[event];
     playCue(spec.cue);
     if (spec.shake) {
       this.scene.cameras.main.shake(spec.shake.duration, spec.shake.intensity);
     }
     if (spec.burst) {
-      this.burst(event, spec.burst, x, y);
+      const burst = boosted ? amplify(spec.burst) : spec.burst;
+      this.burst(event, burst, x, y);
     }
   }
 

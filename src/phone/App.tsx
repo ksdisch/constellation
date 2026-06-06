@@ -8,7 +8,7 @@ import { TapSequence } from './components/puzzles/TapSequence';
 import { Trivia } from './components/puzzles/Trivia';
 import { PhaseAlign } from './components/puzzles/PhaseAlign';
 import { PhoneNetClient } from './net/client';
-import { tuningFor, type PuzzleOverrides, type TalentId } from './talents/talents';
+import { tuningFor, strengthFor, type PuzzleOverrides, type TalentId } from './talents/talents';
 import {
   loadTalents,
   saveTalents,
@@ -17,6 +17,9 @@ import {
   type TalentState,
 } from './talents/save';
 import type { PowerId } from '../shared/protocol';
+
+/** Bonus stardust the phone earns when the laptop clears a planet (M8). */
+const PLANET_BONUS = 3;
 
 const FEEDBACK: Record<PowerId, { title: string; color: string; sub: string }> = {
   'freeze-stars': { title: 'Cast!', color: '#7ad8ff', sub: 'Freeze Stars — enemies cold for 3s.' },
@@ -64,6 +67,15 @@ export function App() {
 
   const tuning = useMemo(() => tuningFor(talents.unlocked), [talents.unlocked]);
 
+  // Which powers the phone player has strength-boosted. A ref tracks the latest
+  // set so the stable `onSolved` callback reads it without going stale.
+  const strength = useMemo(() => strengthFor(talents.unlocked), [talents.unlocked]);
+  const strengthRef = useRef(strength);
+  strengthRef.current = strength;
+
+  // Transient "★ +N — planet cleared" toast, cleared after a beat.
+  const [bonus, setBonus] = useState<number | null>(null);
+
   const handleJoin = useCallback(async (code: string) => {
     setPhase({ kind: 'connecting' });
     setError(null);
@@ -76,6 +88,15 @@ export function App() {
       if (msg.type === 'joined') {
         setPhase({ kind: 'spellbook', roomCode: msg.roomCode });
         setError(null);
+      } else if (msg.type === 'planet-complete') {
+        // The laptop cleared a planet — earn bonus stardust and flash a toast.
+        setTalents((t) => {
+          const next = earnStardust(t, PLANET_BONUS);
+          saveTalents(next);
+          return next;
+        });
+        setBonus(PLANET_BONUS);
+        setTimeout(() => setBonus(null), 2600);
       } else if (msg.type === 'error') {
         setError(msg.message);
         setPhase({ kind: 'idle' });
@@ -119,7 +140,9 @@ export function App() {
     setPhase((p) => {
       if (p.kind !== 'puzzle') return p;
       wasPuzzle = true;
-      clientRef.current?.send({ type: 'puzzle-solved', powerId: p.power });
+      // Boost the cast if this power has a strength talent invested (M8).
+      const boosted = strengthRef.current.has(p.power);
+      clientRef.current?.send({ type: 'puzzle-solved', powerId: p.power, boosted });
       return { kind: 'cast-feedback', roomCode: p.roomCode, power: p.power };
     });
     // Earn a stardust for the solve — but only for a genuine puzzle-phase solve,
@@ -165,6 +188,32 @@ export function App() {
         talents,
         tuning,
       })}
+      {bonus !== null && <BonusToast amount={bonus} />}
+    </div>
+  );
+}
+
+/** A transient "★ +N — planet cleared" toast pinned to the top of the screen. */
+function BonusToast({ amount }: { amount: number }) {
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        top: '24px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        background: '#1a1b3a',
+        border: '1px solid #ffd16680',
+        color: '#ffd166',
+        padding: '12px 18px',
+        borderRadius: '12px',
+        fontSize: '15px',
+        fontWeight: 700,
+        boxShadow: '0 4px 16px #0006',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      ★ +{amount} — planet cleared!
     </div>
   );
 }

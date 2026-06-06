@@ -90,7 +90,16 @@ wss.on('connection', (ws) => {
     if (!other) return;
 
     if (msg.type === 'cast-power' || msg.type === 'puzzle-solved') {
-      send(other, { type: 'power-cast', powerId: msg.powerId });
+      // Carry the optional `boosted` flag through — the relay stays a dumb
+      // forwarder (no game logic): it never reads or decides the boost, just
+      // passes the field the phone set straight to the game.
+      send(other, { type: 'power-cast', powerId: msg.powerId, boosted: msg.boosted });
+      return;
+    }
+
+    if (msg.type === 'planet-complete') {
+      send(other, { type: 'planet-complete' });
+      return;
     }
   });
 
