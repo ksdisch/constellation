@@ -40,6 +40,11 @@ export type BridgeState = {
   shakeActive: boolean;
   lastBurst: { kind: string; count: number } | null;
   audioState: string;
+  // Music observability (M5). musicTrack is the active ambient track ('hub' |
+  // 'planet' | null); musicState is the WebAudio context state of the music
+  // engine — same perceptual autoplay-resume caveat as audioState.
+  musicTrack: string | null;
+  musicState: string;
 };
 
 /** The object exposed on `window.__constellation` when `?test=1`. */
@@ -95,6 +100,8 @@ function zeroedState(): BridgeState {
     shakeActive: false,
     lastBurst: null,
     audioState: 'unavailable',
+    musicTrack: null,
+    musicState: 'unavailable',
   };
 }
 

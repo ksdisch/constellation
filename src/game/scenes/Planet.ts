@@ -9,6 +9,7 @@ import { PLANETS } from '../planets/registry';
 import { isTestMode, setBridgeProviders } from '../testBridge';
 import { JuiceController } from '../juice/effects';
 import { getLastCue, getAudioState, resetLastCue } from '../juice/audio';
+import { startMusic, getMusicTrack, getMusicState } from '../juice/music';
 
 const FREEZE_DURATION_MS = 3000;
 const PLATFORM_LIFETIME_MS = 5000;
@@ -21,6 +22,19 @@ const PHASE_DURATION_MS = 2500;
 const PHASE_DASH_BOOST_MS = 350;
 const PHASE_DASH_SPEED_MULTIPLIER = 1.9;
 const HAZARD_COLOR = 0x5eead4;
+
+// Camera feel (M5): a gentle lerp-follow within seamless flat-colour margin.
+// Only the CAMERA bounds are widened (never the physics world), so reach-math is
+// byte-identical; the revealed margin is the same flat background, so nothing
+// "void" ever shows. A generous deadzone keeps it calm — a cozy drift, not an
+// action-cam.
+const WORLD_W = 960;
+const WORLD_H = 540;
+const CAM_MARGIN_X = 140;
+const CAM_MARGIN_Y = 70;
+const CAM_FOLLOW_LERP = 0.08;
+const CAM_DEADZONE_W = 260;
+const CAM_DEADZONE_H = 260;
 
 export class PlanetScene extends Phaser.Scene {
   private astronaut!: Astronaut;
@@ -80,6 +94,10 @@ export class PlanetScene extends Phaser.Scene {
     // Scene-bound juice applier (SFX + screen shake + particle bursts).
     this.juice = new JuiceController(this);
 
+    // Ambient bed for levels (distinct from the hub track). Idempotent, so a
+    // scene restart keeps the loop seamless rather than re-triggering it.
+    startMusic('planet');
+
     // The floor is the ground tiles, NOT the world's bottom edge. Disabling the
     // world bottom edge lets a missed pit jump fall past `fallRespawnY` (600,
     // below the 540 canvas) so the update() respawn fires — otherwise
@@ -116,7 +134,8 @@ export class PlanetScene extends Phaser.Scene {
         fontSize: '22px',
         color: '#ffffff',
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setScrollFactor(0);
 
     this.add
       .text(480, 88, this.config.hint, {
@@ -124,7 +143,8 @@ export class PlanetScene extends Phaser.Scene {
         fontSize: '14px',
         color: '#a8b0d8',
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setScrollFactor(0);
 
     const linkIndicator = this.add
       .text(950, 14, '● phone linked', {
@@ -132,7 +152,8 @@ export class PlanetScene extends Phaser.Scene {
         fontSize: '12px',
         color: '#98ffc8',
       })
-      .setOrigin(1, 0);
+      .setOrigin(1, 0)
+      .setScrollFactor(0);
 
     this.net.onMessage((msg) => {
       if (msg.type === 'error' && msg.message.includes('phone')) {
@@ -151,7 +172,8 @@ export class PlanetScene extends Phaser.Scene {
           fontSize: '12px',
           color: '#f6c971',
         })
-        .setOrigin(0, 0);
+        .setOrigin(0, 0)
+        .setScrollFactor(0);
       this.input.keyboard!.on('keydown-ONE', () => this.castPower('freeze-stars'));
       this.input.keyboard!.on('keydown-TWO', () => this.castPower('summon-platform'));
       this.input.keyboard!.on('keydown-THREE', () => this.castPower('illuminate'));
@@ -163,6 +185,16 @@ export class PlanetScene extends Phaser.Scene {
     this.physics.add.collider(this.astronaut.sprite, ceiling);
     this.physics.add.collider(this.astronaut.sprite, this.platforms);
     this.physics.add.collider(this.astronaut.sprite, this.hiddenPlatforms);
+
+    // Cozy follow camera. Widen ONLY the camera bounds into flat-colour margin
+    // (the physics world is untouched, so reach-math is identical) and lerp-
+    // follow the astronaut with a generous deadzone. centerOn settles the
+    // opening frame so the level doesn't ease in from the corner.
+    const cam = this.cameras.main;
+    cam.setBounds(-CAM_MARGIN_X, -CAM_MARGIN_Y, WORLD_W + CAM_MARGIN_X * 2, WORLD_H + CAM_MARGIN_Y * 2);
+    cam.setDeadzone(CAM_DEADZONE_W, CAM_DEADZONE_H);
+    cam.startFollow(this.astronaut.sprite, true, CAM_FOLLOW_LERP, CAM_FOLLOW_LERP);
+    cam.centerOn(this.astronaut.sprite.x, this.astronaut.sprite.y);
 
     this.enemy = new Enemy(this, this.config.corridor.x, 435, 140, this.tex('enemy'));
     this.physics.add.collider(this.enemy.sprite, ground);
@@ -233,6 +265,8 @@ export class PlanetScene extends Phaser.Scene {
             shakeActive: this.juice.shakeActive,
             lastBurst: this.juice.lastBurstInfo,
             audioState: getAudioState(),
+            musicTrack: getMusicTrack(),
+            musicState: getMusicState(),
           };
         },
         cast: (id) => this.castPower(id),
@@ -384,6 +418,7 @@ export class PlanetScene extends Phaser.Scene {
         fontStyle: 'bold',
       })
       .setOrigin(0.5)
+      .setScrollFactor(0)
       .setAlpha(0);
     this.tweens.add({
       targets: banner,
@@ -400,6 +435,13 @@ export class PlanetScene extends Phaser.Scene {
   private showWin() {
     this.won = true;
     (this.astronaut.sprite.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0);
+
+    // Settle the camera for the end card: stop following and recentre on the
+    // default frame so the overlay + buttons sit in their designed, un-panned
+    // spots (and their interactive hit areas stay aligned — no scrollFactor
+    // input subtlety). The win flash masks the small snap.
+    this.cameras.main.stopFollow();
+    this.cameras.main.centerOn(WORLD_W / 2, WORLD_H / 2);
 
     // Win beat: mint burst + cue at the goal, plus a soft camera flash. No
     // physics/timeScale slow-mo — the next scene (Hub/replay) inherits a clean
