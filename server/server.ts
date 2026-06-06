@@ -1,5 +1,6 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { ClientToServerMsg, ServerToClientMsg } from '../src/shared/protocol';
+import { relayForward } from './relay';
 
 const PORT = Number(process.env.PORT) || 3081;
 const ROOM_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -89,18 +90,10 @@ wss.on('connection', (ws) => {
     const other = role === 'phone' ? assignedRoom.game : assignedRoom.phone;
     if (!other) return;
 
-    if (msg.type === 'cast-power' || msg.type === 'puzzle-solved') {
-      // Carry the optional `boosted` flag through — the relay stays a dumb
-      // forwarder (no game logic): it never reads or decides the boost, just
-      // passes the field the phone set straight to the game.
-      send(other, { type: 'power-cast', powerId: msg.powerId, boosted: msg.boosted });
-      return;
-    }
-
-    if (msg.type === 'planet-complete') {
-      send(other, { type: 'planet-complete' });
-      return;
-    }
+    // Pure allowlist + cast→power-cast rename, carrying `boosted` through. See
+    // relay.ts; the relay never reads game state.
+    const forward = relayForward(msg);
+    if (forward) send(other, forward);
   });
 
   ws.on('close', () => {
