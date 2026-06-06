@@ -19,6 +19,14 @@ const DARK_ZONE_FADE_MS = 800;
 // part — a calm walk-through, not a reaction), plus a brief dash speed boost so
 // the cast reads as a dash. Teal matches the power's phone accent.
 const PHASE_DURATION_MS = 2500;
+
+// Strength-talent boosts (M8). When the phone player has invested the matching
+// strength talent, the cast arrives with `boosted=true` and the power runs for
+// the longer duration. Every boost is strictly MORE FORGIVING for the astronaut
+// (a longer window to get past an obstacle), so it can never soft-lock a level.
+const FREEZE_BOOSTED_MS = 5000;
+const PLATFORM_BOOSTED_MS = 8000;
+const PHASE_BOOSTED_MS = 4000;
 const PHASE_DASH_BOOST_MS = 350;
 const PHASE_DASH_SPEED_MULTIPLIER = 1.9;
 const HAZARD_COLOR = 0x5eead4;
@@ -51,6 +59,10 @@ export class PlanetScene extends Phaser.Scene {
   // Counts respawns (pit-fall, enemy hit, or un-phased hazard contact) for the
   // test bridge snapshot.
   private respawnCount = 0;
+  // Last cast, for the test bridge — lets a headless driver assert that a
+  // strength-boosted cast crossed the wire and the game branched on it.
+  private lastCastPower: PowerId | null = null;
+  private lastCastBoosted = false;
   // Phase Dash window state. phaseActive gates the hazard-lane respawn; phaseToken
   // lets a re-cast supersede a prior window's expiry callback cleanly.
   private phaseActive = false;
@@ -79,6 +91,8 @@ export class PlanetScene extends Phaser.Scene {
     this.solo = data.solo ?? false;
     this.won = false;
     this.respawnCount = 0;
+    this.lastCastPower = null;
+    this.lastCastBoosted = false;
     this.phaseActive = false;
     // Drop any cue recorded by a prior run so the bridge starts clean (keeps the
     // audio context alive — see resetLastCue vs resetAudio).
@@ -165,7 +179,7 @@ export class PlanetScene extends Phaser.Scene {
         return;
       }
       if (msg.type !== 'power-cast') return;
-      this.castPower(msg.powerId);
+      this.castPower(msg.powerId, msg.boosted ?? false);
     });
 
     if (this.solo) {
@@ -263,6 +277,8 @@ export class PlanetScene extends Phaser.Scene {
             platformCount: this.platforms.getChildren().length,
             darkZonePresent: this.darkZone !== null,
             phaseActive: this.phaseActive,
+            lastCastPower: this.lastCastPower,
+            lastCastBoosted: this.lastCastBoosted,
             unlockedPlanets: progress.unlockedPlanets,
             completed: progress.completed,
             lastSfxCue: getLastCue(),
@@ -289,26 +305,35 @@ export class PlanetScene extends Phaser.Scene {
     this.enemy.update();
   }
 
-  private castPower(powerId: PowerId) {
+  /**
+   * Cast a power. `boosted` (M8) is set when the phone player invested the
+   * matching STRENGTH talent: the effect runs longer AND the laptop feedback is
+   * amplified (a distinct banner + a bigger burst) so the laptop player SEES the
+   * investment. `boosted` defaults false, so the solo keys and any un-invested
+   * cast are unchanged. Illuminate has no boost (permanent binary reveal).
+   */
+  private castPower(powerId: PowerId, boosted = false) {
+    this.lastCastPower = powerId;
+    this.lastCastBoosted = boosted;
     switch (powerId) {
       case 'freeze-stars':
-        this.enemy.freeze(FREEZE_DURATION_MS, this);
-        this.juice.trigger('freeze', this.enemy.sprite.x, this.enemy.sprite.y);
-        this.flashBanner('FREEZE!', '#7ad8ff');
+        this.enemy.freeze(boosted ? FREEZE_BOOSTED_MS : FREEZE_DURATION_MS, this);
+        this.juice.trigger('freeze', this.enemy.sprite.x, this.enemy.sprite.y, boosted);
+        this.flashBanner(boosted ? 'DEEP FREEZE!' : 'FREEZE!', '#7ad8ff');
         break;
       case 'summon-platform':
         if (this.platforms.getChildren().length > 0) break;
-        this.summonPlatform();
-        this.juice.trigger('platform', this.config.platformDrop.x, this.config.platformDrop.y);
-        this.flashBanner('PLATFORM!', '#9a7aff');
+        this.summonPlatform(boosted ? PLATFORM_BOOSTED_MS : PLATFORM_LIFETIME_MS);
+        this.juice.trigger('platform', this.config.platformDrop.x, this.config.platformDrop.y, boosted);
+        this.flashBanner(boosted ? 'LASTING PLATFORM!' : 'PLATFORM!', '#9a7aff');
         break;
       case 'illuminate':
         this.illuminate();
         break;
       case 'phase-dash':
-        this.activatePhase();
-        this.juice.trigger('phase-dash', this.astronaut.sprite.x, this.astronaut.sprite.y);
-        this.flashBanner('PHASE!', '#5eead4');
+        this.activatePhase(boosted ? PHASE_BOOSTED_MS : PHASE_DURATION_MS);
+        this.juice.trigger('phase-dash', this.astronaut.sprite.x, this.astronaut.sprite.y, boosted);
+        this.flashBanner(boosted ? 'LONG PHASE!' : 'PHASE!', '#5eead4');
         break;
       default: {
         const _exhaustive: never = powerId;
@@ -339,7 +364,7 @@ export class PlanetScene extends Phaser.Scene {
    * forward dash boost. A re-cast bumps phaseToken so an in-flight expiry
    * callback from the prior window can't end the new one early.
    */
-  private activatePhase() {
+  private activatePhase(durationMs: number) {
     this.phaseActive = true;
     this.astronaut.setSpeedMultiplier(PHASE_DASH_SPEED_MULTIPLIER);
     this.astronaut.sprite.setTint(HAZARD_COLOR).setAlpha(0.55);
@@ -349,7 +374,7 @@ export class PlanetScene extends Phaser.Scene {
     this.time.delayedCall(PHASE_DASH_BOOST_MS, () => {
       if (token === this.phaseToken) this.astronaut.setSpeedMultiplier(1);
     });
-    this.time.delayedCall(PHASE_DURATION_MS, () => {
+    this.time.delayedCall(durationMs, () => {
       if (token !== this.phaseToken) return; // superseded by a newer cast
       this.phaseActive = false;
       this.astronaut.setSpeedMultiplier(1);
@@ -357,12 +382,12 @@ export class PlanetScene extends Phaser.Scene {
     });
   }
 
-  private summonPlatform() {
+  private summonPlatform(lifetimeMs: number) {
     const sprite = this.platforms.create(this.config.platformDrop.x, this.config.platformDrop.y, this.tex('platform')) as Phaser.Physics.Arcade.Sprite;
     sprite.setAlpha(0);
     sprite.refreshBody();
     this.tweens.add({ targets: sprite, alpha: 1, duration: 200 });
-    this.time.delayedCall(PLATFORM_LIFETIME_MS - PLATFORM_FADE_OUT_MS, () => {
+    this.time.delayedCall(lifetimeMs - PLATFORM_FADE_OUT_MS, () => {
       this.tweens.add({
         targets: sprite,
         alpha: 0,
@@ -457,9 +482,17 @@ export class PlanetScene extends Phaser.Scene {
     // Durably record the completion: mark this planet complete (which unlocks
     // the next in the chain) and persist. markPlanetComplete is pure, so we
     // read the latest persisted state, derive the new state, and save it.
-    const next = markPlanetComplete(loadProgress(), this.config.id);
+    const prev = loadProgress();
+    const firstClear = prev.completed[this.config.id] !== true;
+    const next = markPlanetComplete(prev, this.config.id);
     saveProgress(next);
     const nextUnlocked = new Set(next.unlockedPlanets);
+
+    // Tell the phone the planet was cleared so it earns bonus stardust — the
+    // hub→talent-economy loop. Only on the FIRST clear, so replaying an already-
+    // cleared planet can't farm stardust. Forwarded by the relay; the phone may
+    // be absent (solo), in which case this is a harmless no-op send.
+    if (firstClear) this.net.send({ type: 'planet-complete' });
 
     this.add.rectangle(480, 270, 960, 540, 0x000000, 0.65);
     this.add

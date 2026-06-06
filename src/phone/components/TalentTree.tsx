@@ -1,4 +1,4 @@
-import { TALENTS, type TalentNode, type TalentId } from '../talents/talents';
+import { TALENTS, type TalentNode, type TalentKind, type TalentId } from '../talents/talents';
 import { canUnlock, type TalentState } from '../talents/save';
 
 /**
@@ -167,8 +167,11 @@ function TalentStar({ node, accent, owned, affordable, onUnlock }: StarProps) {
         {owned ? '★' : '☆'}
       </span>
       <span style={{ display: 'flex', flexDirection: 'column', gap: '3px', flex: 1 }}>
-        <span style={{ fontSize: '15px', fontWeight: 700, color: owned ? accent : '#fff' }}>
-          {node.title}
+        <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '15px', fontWeight: 700, color: owned ? accent : '#fff' }}>
+            {node.title}
+          </span>
+          <KindTag kind={node.kind} accent={accent} />
         </span>
         <span style={{ fontSize: '12px', opacity: 0.7 }}>{node.blurb}</span>
       </span>
@@ -183,5 +186,31 @@ function TalentStar({ node, accent, owned, affordable, onUnlock }: StarProps) {
         {owned ? 'Owned' : `★ ${node.cost}`}
       </span>
     </button>
+  );
+}
+
+/**
+ * Tiny pill that names the talent's flavor — the self-vs-partner asymmetry at a
+ * glance. Accommodation tunes YOUR puzzle; strength boosts your PARTNER's power.
+ */
+function KindTag({ kind, accent }: { kind: TalentKind; accent: string }) {
+  const strength = kind === 'strength';
+  return (
+    <span
+      style={{
+        fontSize: '9px',
+        fontWeight: 700,
+        letterSpacing: '0.5px',
+        textTransform: 'uppercase',
+        padding: '2px 6px',
+        borderRadius: '6px',
+        whiteSpace: 'nowrap',
+        color: strength ? '#1a1b3a' : accent,
+        background: strength ? accent : 'transparent',
+        border: `1px solid ${accent}${strength ? '' : '66'}`,
+      }}
+    >
+      {strength ? 'For partner' : 'For you'}
+    </span>
   );
 }

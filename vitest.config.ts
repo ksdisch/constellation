@@ -10,7 +10,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'server/**/*.test.ts'],
     // Determinism guards: run test files serially and in a stable order, and
     // keep per-file module isolation on (the default). This removes the
     // file-churn/parallelism transform races that made the suite flake under

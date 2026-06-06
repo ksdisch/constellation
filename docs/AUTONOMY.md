@@ -32,10 +32,22 @@ http://<host>:5180/?solo=1&test=1
 | `startPlanet(id)` | `'planet-1' \| 'planet-2' \| 'planet-3' \| ...` | Jumps straight into a planet from Hub *or* Planet. Only launches registry entries that have a `config` (config-less stubs are no-ops). |
 
 `BridgeState = { sceneKey, won, enemyFrozen, astronautX, astronautY, respawnCount, platformCount,
-darkZonePresent, phaseActive, unlockedPlanets: string[], completed: Record<string, boolean>, lastSfxCue,
-shakeActive, lastBurst, audioState, musicTrack, musicState }`.
+darkZonePresent, phaseActive, lastCastPower, lastCastBoosted, unlockedPlanets: string[],
+completed: Record<string, boolean>, lastSfxCue, shakeActive, lastBurst, audioState, musicTrack, musicState }`.
 `phaseActive` is `true` while a Phase Dash window is open (the astronaut is immune to the hazard lane).
 `unlockedPlanets`/`completed` are read fresh from `loadProgress()` (localStorage) on every call.
+
+### Strength-talent coupling (M8)
+
+| Field | Type | Notes |
+|---|---|---|
+| `lastCastPower` | `string \| null` | The most recently cast power (`null` until the first cast; reset on scene `init`). |
+| `lastCastBoosted` | `boolean` | Whether that cast arrived **strength-boosted** — i.e. the phone player invested the matching talent and the game ran the longer duration (`freeze 5s / platform 8s / phase 4s`) + amplified banner/burst. |
+
+To assert the coupling end-to-end with a two-client `?test=1` run: invest a strength talent on the phone
+(`Deep Freeze`), solve that puzzle, then poll the game bridge for `lastCastPower === 'freeze-stars' &&
+lastCastBoosted === true`. The pure wire (phone `strengthFor` → relay `relayForward` → game branch) is
+already covered by Vitest; the bridge fields are for the live magnitude check.
 
 ### Juice fields (SFX / shake / particles)
 

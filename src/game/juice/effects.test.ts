@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { EFFECTS, type JuiceEvent } from './effects';
+import { EFFECTS, amplify, type JuiceEvent } from './effects';
 import { CUES } from './audio';
 
 /**
@@ -54,5 +54,24 @@ describe('EFFECTS table', () => {
   it('jump is audio-only (no shake, no burst) — it fires on every hop', () => {
     expect(EFFECTS.jump.shake).toBeUndefined();
     expect(EFFECTS.jump.burst).toBeUndefined();
+  });
+});
+
+describe('amplify (strength-boosted burst, M8)', () => {
+  it('makes a louder copy without mutating the input or the EFFECTS table', () => {
+    const base = EFFECTS.freeze.burst!;
+    const before = { ...base };
+    const boosted = amplify(base);
+    expect(boosted.count).toBeGreaterThan(base.count);
+    expect(boosted.speed).toBeGreaterThan(base.speed);
+    expect(base).toEqual(before); // input untouched
+  });
+
+  it('keeps color, lifespan and scale identical — same power, just bigger', () => {
+    const base = EFFECTS.platform.burst!;
+    const boosted = amplify(base);
+    expect(boosted.color).toBe(base.color);
+    expect(boosted.lifespan).toBe(base.lifespan);
+    expect(boosted.scale).toBe(base.scale);
   });
 });

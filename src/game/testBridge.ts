@@ -29,6 +29,10 @@ export type BridgeState = {
   // True while a Phase Dash window is active (astronaut immune to the hazard
   // lane). Lets a headless driver prove Phase Dash is load-bearing.
   phaseActive: boolean;
+  // The most recent cast and whether it arrived strength-boosted (M8). Lets a
+  // headless driver assert the boost crossed the wire and the game branched.
+  lastCastPower: string | null;
+  lastCastBoosted: boolean;
   unlockedPlanets: string[];
   completed: Record<string, boolean>;
   // Juice observability (M5). lastSfxCue is the most recently requested sound
@@ -94,6 +98,8 @@ function zeroedState(): BridgeState {
     platformCount: 0,
     darkZonePresent: false,
     phaseActive: false,
+    lastCastPower: null,
+    lastCastBoosted: false,
     unlockedPlanets: [],
     completed: {},
     lastSfxCue: null,

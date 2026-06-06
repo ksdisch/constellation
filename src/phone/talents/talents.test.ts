@@ -1,4 +1,4 @@
-import { TALENTS, tuningFor, talentById, isTalentId, type TalentId } from './talents';
+import { TALENTS, tuningFor, strengthFor, talentById, isTalentId, type TalentId } from './talents';
 
 describe('TALENTS table', () => {
   it('has unique ids', () => {
@@ -78,5 +78,51 @@ describe('tuningFor', () => {
     const a = tuningFor([]);
     a['freeze-stars'].problemCount = 99;
     expect(tuningFor([])['freeze-stars']).toEqual({});
+  });
+});
+
+describe('strength branch', () => {
+  it('every strength node points at a duration-based power (never illuminate)', () => {
+    const strength = TALENTS.filter((t) => t.kind === 'strength');
+    expect(strength.map((t) => t.power).sort()).toEqual([
+      'freeze-stars',
+      'phase-dash',
+      'summon-platform',
+    ]);
+    // Illuminate is a permanent, binary reveal — no duration axis, so no boost.
+    expect(strength.some((t) => t.power === 'illuminate')).toBe(false);
+  });
+
+  it('strength nodes are tier-1 (no prerequisite) so a boost never gates behind an accommodation', () => {
+    for (const node of TALENTS.filter((t) => t.kind === 'strength')) {
+      expect(node.requires).toBeNull();
+    }
+  });
+});
+
+describe('strengthFor', () => {
+  it('returns an empty set for no talents', () => {
+    expect(strengthFor([]).size).toBe(0);
+  });
+
+  it('ignores accommodation talents — only strength boosts a cast', () => {
+    expect(strengthFor(['fewer-sums', 'unhurried', 'second-chance']).size).toBe(0);
+  });
+
+  it('maps each strength talent to the power it boosts', () => {
+    expect([...strengthFor(['deep-freeze'])]).toEqual(['freeze-stars']);
+    expect([...strengthFor(['lasting-platform'])]).toEqual(['summon-platform']);
+    expect([...strengthFor(['long-phase'])]).toEqual(['phase-dash']);
+  });
+
+  it('is order-independent and ignores unknown ids', () => {
+    const a = strengthFor(['long-phase', 'deep-freeze']);
+    const b = strengthFor(['deep-freeze', 'long-phase', 'ghost' as TalentId]);
+    expect([...a].sort()).toEqual([...b].sort());
+  });
+
+  it('reports the full set when every strength node is unlocked', () => {
+    const all = TALENTS.map((t) => t.id);
+    expect([...strengthFor(all)].sort()).toEqual(['freeze-stars', 'phase-dash', 'summon-platform']);
   });
 });
