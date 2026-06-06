@@ -64,10 +64,14 @@ export interface AudioSink {
   readonly state: string;
 }
 
-type AudioCtor = new () => AudioContext;
+export type AudioCtor = new () => AudioContext;
 
-/** The platform's AudioContext constructor, or null where WebAudio is absent. */
-function webAudioCtor(): AudioCtor | null {
+/**
+ * The platform's AudioContext constructor, or null where WebAudio is absent
+ * (jsdom/SSR). Exported so the sibling music engine shares one "is WebAudio
+ * here?" seam rather than duplicating the feature check.
+ */
+export function webAudioCtor(): AudioCtor | null {
   if (typeof window === 'undefined') return null;
   const w = window as unknown as {
     AudioContext?: AudioCtor;
