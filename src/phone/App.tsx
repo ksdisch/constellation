@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import type { ReactElement } from 'react';
 import { RoomJoin } from './components/RoomJoin';
 import { Spellbook } from './components/Spellbook';
@@ -73,8 +73,14 @@ export function App() {
   const strengthRef = useRef(strength);
   strengthRef.current = strength;
 
-  // Transient "★ +N — planet cleared" toast, cleared after a beat.
+  // Transient "★ +N — planet cleared" toast, cleared after a beat. The timer is
+  // tracked so back-to-back clears re-arm cleanly (no premature flicker) and a
+  // pending timer is dropped on unmount.
   const [bonus, setBonus] = useState<number | null>(null);
+  const bonusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (bonusTimerRef.current !== null) clearTimeout(bonusTimerRef.current);
+  }, []);
 
   const handleJoin = useCallback(async (code: string) => {
     setPhase({ kind: 'connecting' });
@@ -96,7 +102,8 @@ export function App() {
           return next;
         });
         setBonus(PLANET_BONUS);
-        setTimeout(() => setBonus(null), 2600);
+        if (bonusTimerRef.current !== null) clearTimeout(bonusTimerRef.current);
+        bonusTimerRef.current = setTimeout(() => setBonus(null), 2600);
       } else if (msg.type === 'error') {
         setError(msg.message);
         setPhase({ kind: 'idle' });

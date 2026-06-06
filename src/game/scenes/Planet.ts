@@ -482,14 +482,17 @@ export class PlanetScene extends Phaser.Scene {
     // Durably record the completion: mark this planet complete (which unlocks
     // the next in the chain) and persist. markPlanetComplete is pure, so we
     // read the latest persisted state, derive the new state, and save it.
-    const next = markPlanetComplete(loadProgress(), this.config.id);
+    const prev = loadProgress();
+    const firstClear = prev.completed[this.config.id] !== true;
+    const next = markPlanetComplete(prev, this.config.id);
     saveProgress(next);
     const nextUnlocked = new Set(next.unlockedPlanets);
 
     // Tell the phone the planet was cleared so it earns bonus stardust — the
-    // hub→talent-economy loop. Forwarded opaquely by the relay; the phone may be
-    // absent (solo), in which case this is a harmless no-op send.
-    this.net.send({ type: 'planet-complete' });
+    // hub→talent-economy loop. Only on the FIRST clear, so replaying an already-
+    // cleared planet can't farm stardust. Forwarded by the relay; the phone may
+    // be absent (solo), in which case this is a harmless no-op send.
+    if (firstClear) this.net.send({ type: 'planet-complete' });
 
     this.add.rectangle(480, 270, 960, 540, 0x000000, 0.65);
     this.add
