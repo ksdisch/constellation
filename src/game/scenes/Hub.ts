@@ -4,6 +4,7 @@ import { PLANETS, type PlanetRegistryEntry } from '../planets/registry';
 import { loadProgress } from '../progression/save';
 import { nodeStateFor } from '../progression/nodeStateFor';
 import { isTestMode, setBridgeProviders } from '../testBridge';
+import { startMusic } from '../juice/music';
 
 type Star = { x: number; y: number; r: number; alpha: number };
 
@@ -59,6 +60,10 @@ export class HubScene extends Phaser.Scene {
   }
 
   create() {
+    // Airy ambient bed for the hub (distinct from the in-level track). Idempotent
+    // and self-switching, so returning from a planet swaps tracks seamlessly.
+    startMusic('hub');
+
     // Starry background — hand-placed dots for a consistent look run-to-run.
     for (const star of STARS) {
       this.add.circle(star.x, star.y, star.r, 0xffffff).setAlpha(star.alpha);
