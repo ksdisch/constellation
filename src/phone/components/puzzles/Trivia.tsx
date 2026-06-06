@@ -90,6 +90,8 @@ interface Props {
   onCancel: () => void;
   questionPool?: readonly Question[];
   timerSeconds?: number;
+  /** Talent "Second Chance": a wrong answer no longer resets to question 1. */
+  forgiveMistakes?: boolean;
 }
 
 export function Trivia({
@@ -97,6 +99,7 @@ export function Trivia({
   onCancel,
   questionPool = QUESTIONS,
   timerSeconds = 30,
+  forgiveMistakes = false,
 }: Props) {
   const [round, setRound] = useState<Question[]>(() => sampleQuestions(questionPool, ROUND_SIZE));
   const [idx, setIdx] = useState(0);
@@ -130,8 +133,12 @@ export function Trivia({
     } else {
       setWrong(true);
       setTimeout(() => {
-        setRound(sampleQuestions(questionPool, ROUND_SIZE));
-        setIdx(0);
+        // "Second Chance" talent: stay on the current question instead of
+        // resetting the whole round back to question 1.
+        if (!forgiveMistakes) {
+          setRound(sampleQuestions(questionPool, ROUND_SIZE));
+          setIdx(0);
+        }
         setWrong(false);
       }, WRONG_FLASH_MS);
     }

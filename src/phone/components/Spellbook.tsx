@@ -22,9 +22,11 @@ const POWERS: Power[] = (Object.keys(POWER_TILES) as PowerId[]).map((id) => ({ i
 
 interface Props {
   onPick: (id: PowerId) => void;
+  onOpenTalents: () => void;
+  stardust: number;
 }
 
-export function Spellbook({ onPick }: Props) {
+export function Spellbook({ onPick, onOpenTalents, stardust }: Props) {
   return (
     <div
       style={{
@@ -72,6 +74,26 @@ export function Spellbook({ onPick }: Props) {
           <span style={{ fontSize: '13px', opacity: 0.7 }}>{p.subtitle}</span>
         </button>
       ))}
+
+      <button
+        onClick={onOpenTalents}
+        style={{
+          marginTop: '4px',
+          minHeight: '44px',
+          padding: '14px 18px',
+          borderRadius: '14px',
+          border: '1px solid #ffd16640',
+          background: 'transparent',
+          color: '#fff',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <span style={{ fontSize: '15px', fontWeight: 600, color: '#ffd166' }}>✦ Constellation</span>
+        <span style={{ fontSize: '14px', color: '#ffd166', opacity: 0.85 }}>★ {stardust}</span>
+      </button>
     </div>
   );
 }

@@ -5,6 +5,8 @@ interface Props {
   onCancel: () => void;
   totalSeconds?: number;
   sequenceLength?: number;
+  /** Talent "First Light": light the first color as a free hint while at step 0. */
+  revealFirst?: boolean;
 }
 
 const CELL_COLORS = ['#7ad8ff', '#9a7aff', '#ffd166', '#98ffc8'];
@@ -19,6 +21,7 @@ export function TapSequence({
   onCancel,
   totalSeconds = 25,
   sequenceLength = 5,
+  revealFirst = false,
 }: Props) {
   const sequence = useMemo(
     () => Array.from({ length: sequenceLength }, () => Math.floor(Math.random() * CELL_COLORS.length)),
@@ -131,9 +134,13 @@ export function TapSequence({
         }}
       >
         {CELL_COLORS.map((color, i) => {
+          // "First Light" talent: while waiting on the very first tap, gently
+          // light the correct opening cell as a free reminder.
+          const hint = revealFirst && mode === 'input' && inputProgress === 0;
           const lit =
             (mode === 'demo' && demoLitIndex >= 0 && sequence[demoLitIndex] === i) ||
-            (mode === 'input' && tapHighlight === i);
+            (mode === 'input' && tapHighlight === i) ||
+            (hint && sequence[0] === i);
           const failLit = mode === 'fail';
           const bg = failLit ? '#ff6b9d' : lit ? color : `${color}22`;
           const borderAlpha = failLit ? 'ff' : lit ? 'ff' : '60';
