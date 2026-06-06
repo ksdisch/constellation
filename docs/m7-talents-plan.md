@@ -70,8 +70,9 @@ sessions.
 ## Progress
 
 - [x] Plan doc + design scope cuts
-- [ ] Pure core: `talents.ts` + `save.ts` + tests (green)
-- [ ] `TalentTree.tsx` + Spellbook footer
-- [ ] `App.tsx` wiring + puzzle prop additions
-- [ ] typecheck / build / test all green; adversarial review
-- [ ] BACKLOG + docs updated; PR opened
+- [x] Pure core: `talents.ts` + `save.ts` + tests (green)
+- [x] `TalentTree.tsx` + Spellbook footer
+- [x] `App.tsx` wiring + puzzle prop additions
+- [x] typecheck / build / test all green (90 tests); adversarial review PASS
+- [x] Hardening from review: load-time prereq pruning + stardust award guarded to puzzle phase
+- [x] BACKLOG + docs updated; PR opened

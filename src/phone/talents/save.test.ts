@@ -60,6 +60,23 @@ describe('load / save round-trip', () => {
     expect(loadTalents()).toEqual({ schemaVersion: 1, stardust: 0, unlocked: ['fewer-sums'] });
   });
 
+  it('drops an unlocked tier-2 node whose prerequisite is missing', () => {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ schemaVersion: 1, stardust: 0, unlocked: ['unhurried'] }),
+    );
+    // 'unhurried' requires 'fewer-sums', which isn't present -> pruned.
+    expect(loadTalents().unlocked).toEqual([]);
+  });
+
+  it('keeps a tier-2 node when its prerequisite is also present', () => {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ schemaVersion: 1, stardust: 0, unlocked: ['unhurried', 'fewer-sums'] }),
+    );
+    expect(loadTalents().unlocked.sort()).toEqual(['fewer-sums', 'unhurried']);
+  });
+
   it('does not mutate the input on save', () => {
     const state: TalentState = { schemaVersion: 1, stardust: 2, unlocked: [] };
     const copy = structuredClone(state);
@@ -70,10 +87,11 @@ describe('load / save round-trip', () => {
 
 describe('migrate', () => {
   it('stamps the current version and salvages known fields', () => {
-    const out = migrate({ schemaVersion: 0, stardust: 4, unlocked: ['unhurried', 'bad'] });
+    const out = migrate({ schemaVersion: 0, stardust: 4, unlocked: ['fewer-sums', 'unhurried', 'bad'] });
     expect(out.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(out.stardust).toBe(4);
-    expect(out.unlocked).toEqual(['unhurried']);
+    // 'bad' filtered; 'unhurried' kept because its prereq 'fewer-sums' is present.
+    expect(out.unlocked.sort()).toEqual(['fewer-sums', 'unhurried']);
   });
 
   it('routes a wrong-version blob through migrate on load', () => {

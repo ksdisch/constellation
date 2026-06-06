@@ -1,6 +1,6 @@
 # Player Specialization (Phone-Side)
 
-**Status:** Idea — not committed. Blocked on the M2 "is it fun?" playtest and the session persistence decision (both tracked in `BACKLOG.md`).
+**Status:** v1 SHIPPED (M7, accommodation branch) — see `docs/m7-talents-plan.md`. This doc remains the design rationale; the "open questions" below were resolved for v1 as: **earn per puzzle solved** (phone-local, no protocol change), **accommodation branch only** (strength needs laptop-side payoff coupling — deferred), **8 nodes / 4 branches / 2 tiers**, persisted in `localStorage`. Remaining open: per-planet earning (needs a `game→phone` wire message), the strength branch, and laptop-side visibility/theming.
 
 ## Premise
 

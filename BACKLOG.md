@@ -47,6 +47,14 @@ Pick items with the `project-backlog` skill in Claude Code.
 
 ## Done
 
+### [Feature] Player Specialization — phone-side talent constellation (M7, accommodation v1)
+- **Why:** First meta-progression layer — the deferred `docs/ideas/specialization.md` idea, unblocked now that durable persistence (M4 spine) exists. Gives the puzzle player a personal sense of growth and finally makes the "constellation" name literal (a star-tree you draw as you invest).
+- **Acceptance:** Phone earns **stardust** (★, +1 per puzzle solved, persisted in `localStorage`) and spends it in a new **Constellation** screen on accommodation talents that tune puzzles cozier — fewer math problems, longer timers, a free first Simon color, trivia that no longer resets on a wrong answer, fewer phase dials. 8 nodes / 4 puzzle branches / 2 tiers. Phone-side only (no power-magnitude coupling), no protocol/relay/game changes.
+- **Size:** L
+- **Added:** 2026-06-06
+- **Completed:** 2026-06-06
+- **Note:** Built by the `/autonomous-milestone` workflow. New `src/phone/talents/{talents,save}.ts` — a pure node table + `tuningFor()` (unlocked set → per-puzzle prop deltas) and a versioned, guarded, never-throws `localStorage` twin of the game-side progression save (earn/unlock/canUnlock; stardust can't go negative; prereq + affordability gated; load-time prune of orphaned tier-2 ids). New `TalentTree.tsx` screen + a Spellbook footer button; `App.tsx` holds talent state, earns on solve (guarded to the puzzle phase), and feeds `tuningFor()` into the puzzle router — kept uniform (`PuzzleArgs`) so the `satisfies Record<PowerId,…>` exhaustiveness guard still holds. The two new accommodations rode opt-in props (`TapSequence.revealFirst`, `Trivia.forgiveMistakes`), each defaulting to current behavior. **Deliberate scope cuts:** accommodation branch only (the strength branch needs laptop-side payoff coupling — out of the phone-only boundary) and earn-per-solve (per-planet earning would need a new `game→phone` wire message). Gated on `typecheck` + `build` + **90 Vitest tests** (29 new across `talents.test.ts` / `save.test.ts`); adversarial multi-agent review PASS, both MINOR findings folded in. No browser-automation MCP in the cloud session and the `?test=1` bridge is game-side only, so React wiring is covered by typecheck/build per project convention; manual phone smoke remains the integration gate.
+
 ### [Feature] Polish pass — remainder: camera feel + procedural music
 - **Why:** M5. The SFX/particles/screen-shake/win-beat slice shipped (see "Juice layer"); this closes the rest of the original polish pass — **background music** (different tracks on hub vs. levels) and **camera feel** (a camera that lerps to follow the astronaut instead of being static).
 - **Acceptance:** Ambient music loops on the hub and during levels (distinct tracks). Camera lerp-follows the astronaut. Subjective bar: "feels juicy" — building on the existing SFX/particle/shake layer.

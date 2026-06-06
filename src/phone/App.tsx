@@ -115,17 +115,22 @@ export function App() {
   }, []);
 
   const onSolved = useCallback(() => {
+    let wasPuzzle = false;
     setPhase((p) => {
       if (p.kind !== 'puzzle') return p;
+      wasPuzzle = true;
       clientRef.current?.send({ type: 'puzzle-solved', powerId: p.power });
       return { kind: 'cast-feedback', roomCode: p.roomCode, power: p.power };
     });
-    // Earn a stardust for the solve and persist it.
-    setTalents((t) => {
-      const next = earnStardust(t);
-      saveTalents(next);
-      return next;
-    });
+    // Earn a stardust for the solve — but only for a genuine puzzle-phase solve,
+    // so a stray/duplicate onSolved can't mint stardust without a cast.
+    if (wasPuzzle) {
+      setTalents((t) => {
+        const next = earnStardust(t);
+        saveTalents(next);
+        return next;
+      });
+    }
     setTimeout(() => {
       setPhase((p) =>
         p.kind === 'cast-feedback' ? { kind: 'spellbook', roomCode: p.roomCode } : p

@@ -1,4 +1,4 @@
-import { talentById, isTalentId, type TalentId } from './talents';
+import { TALENTS, talentById, isTalentId, type TalentId } from './talents';
 
 /**
  * Pure, versioned, framework-free talent persistence — the phone-side twin of
@@ -27,6 +27,20 @@ export function defaultTalentState(): TalentState {
   return { schemaVersion: CURRENT_SCHEMA_VERSION, stardust: 0, unlocked: [] };
 }
 
+/**
+ * Drop any unlocked id whose prerequisite isn't also present — integrity the
+ * unlock API guarantees, but a hand-edited/corrupt blob might violate. Iterating
+ * in TALENTS order (tier-1 before its tier-2 children) means one pass suffices.
+ */
+function pruneOrphans(ids: ReadonlySet<TalentId>): TalentId[] {
+  const kept = new Set<TalentId>();
+  for (const node of TALENTS) {
+    if (!ids.has(node.id)) continue;
+    if (node.requires === null || kept.has(node.requires)) kept.add(node.id);
+  }
+  return Array.from(kept);
+}
+
 /** Minimal structural check: is `value` shaped like a TalentState we can use? */
 function isTalentShape(value: unknown): value is TalentState {
   if (typeof value !== 'object' || value === null) return false;
@@ -52,8 +66,8 @@ function normalize(value: unknown): TalentState {
   }
 
   if (Array.isArray(v.unlocked)) {
-    const unlocked = v.unlocked.filter(isTalentId);
-    base.unlocked = Array.from(new Set(unlocked));
+    const unlocked = new Set(v.unlocked.filter(isTalentId));
+    base.unlocked = pruneOrphans(unlocked);
   }
 
   return base;
