@@ -19,13 +19,6 @@ Pick items with the `project-backlog` skill in Claude Code.
 - **Size:** S
 - **Added:** 2026-05-12
 
-### [Feature] Polish pass — remainder: music + camera feel
-- **Why:** M5. The SFX/particles/screen-shake/win-beat slice shipped (see Done: "Juice layer"); what remains of the original polish pass is **background music** (Incompetech/OpenGameArt loops, different tracks on hub vs. levels) and **camera feel** (a camera that lerps to follow the astronaut instead of being static). Music likely needs a small audio-asset decision (the stack is otherwise asset-free); camera-follow is pure Phaser.
-- **Acceptance:** Background music loops on the hub and during levels (different tracks). Camera lerps to follow the astronaut. Subjective bar: "feels juicy" — building on the existing SFX/particle/shake layer.
-- **Size:** M
-- **Added:** 2026-05-12
-- **Note:** Narrowed 2026-06-05 after the SFX/particles/shake subset shipped on `feat/m5-juice`.
-
 ### [Feature] Deploy — relay to Fly.io (or Cloudflare DO), game client to itch.io
 - **Why:** M5. The actual ship. Without deployment, the game can't leave your wifi.
 - **Acceptance:** Relay server running on a free-tier host with a public wss:// URL. Game client built and uploaded as an itch.io HTML5 project, pointing at the deployed relay. End-to-end test: laptop on home wifi, phone on cellular, full co-op loop works.
@@ -53,6 +46,14 @@ Pick items with the `project-backlog` skill in Claude Code.
 ---
 
 ## Done
+
+### [Feature] Polish pass — remainder: camera feel + procedural music
+- **Why:** M5. Closed the last slice of the original polish pass after the SFX/particles/shake subset shipped on `feat/m5-juice`: **camera feel** (a camera that lerps to follow the astronaut instead of being static) and **background music** (different tracks on hub vs. levels).
+- **Acceptance:** Camera lerp-follows the astronaut; ambient music loops on the hub and in levels (distinct tracks). Subjective bar: "feels juicy" — building on the existing SFX/particle/shake layer.
+- **Size:** M
+- **Added:** 2026-05-12
+- **Completed:** 2026-06-05
+- **Note:** Built by the `/autonomous-milestone` workflow. **Music sidestepped the "needs an audio-asset decision" snag by being procedural** — new `src/game/juice/music.ts` is a structural twin of `audio.ts` (pure `TRACKS` table + injectable `MusicSink`, lazy WebAudio default, mock for Vitest, jsdom-safe), generating two looping pentatonic beds over a faint drone (`hub` airy/sparse, `planet` warmer) — **zero new deps, zero asset files**. `startMusic('hub')` in `Hub.create`, `startMusic('planet')` in `Planet.create` (idempotent, so a scene restart keeps the loop seamless). **Camera feel** widens only the *camera* bounds into the flat-colour margin (physics world untouched → reach-math byte-identical, no "void" shown) and `startFollow` + a generous deadzone for a cozy drift; persistent HUD + cast banners are `setScrollFactor(0)`, and `showWin()` `stopFollow()` + `centerOn` so the end-card stays in its designed frame. New bridge fields `musicTrack`/`musicState`. Live-verified at `?solo=1&test=1`: planet music reports `musicTrack='planet'` + `musicState='running'`, a spawn-vs-panned screenshot pair shows the camera revealing the off-screen goal/dark-zone while the HUD stays pinned, Freeze regression + Illuminate flip + pit-respawn unaffected. No protocol/relay/dependency/asset changes; Freeze Stars cast logic untouched. Documented in `docs/AUTONOMY.md`.
 
 ### [Feature] Planet 3 "Nebula Core" + Phase Dash — the 4th power
 - **Why:** M6. Closes the planet-2 → "Coming soon" dead-end (a visible broken promise) **and** the mechanical gap (every planet was a reskin of the same three powers). The real win is proving the rigid `PlanetConfig` + the `castPower` exhaustiveness guard — both designed for exactly three powers — actually extend to a fourth.

@@ -33,7 +33,7 @@ http://<host>:5180/?solo=1&test=1
 
 `BridgeState = { sceneKey, won, enemyFrozen, astronautX, astronautY, respawnCount, platformCount,
 darkZonePresent, phaseActive, unlockedPlanets: string[], completed: Record<string, boolean>, lastSfxCue,
-shakeActive, lastBurst, audioState }`.
+shakeActive, lastBurst, audioState, musicTrack, musicState }`.
 `phaseActive` is `true` while a Phase Dash window is open (the astronaut is immune to the hazard lane).
 `unlockedPlanets`/`completed` are read fresh from `loadProgress()` (localStorage) on every call.
 
@@ -53,6 +53,30 @@ proves whether the context actually resumed — but whether a human *hears* it d
 autoplay-resume gesture. So assert `lastSfxCue` flips on cast and (optionally) that `audioState` reaches
 `'running'`; do **not** treat silence as a failure. The pure cue/effect tables are Vitest-asserted in
 `src/game/juice/*.test.ts`.
+
+### Music fields (ambient bed)
+
+The M5 polish remainder added a procedural ambient-music bed (`src/game/juice/music.ts`), a structural
+twin of the SFX engine — a pure `TRACKS` table + injectable `MusicSink` (Vitest-asserted in
+`music.test.ts`). Two looping tracks: `hub` (started in `Hub.create`) and `planet` (started in
+`Planet.create`). Two bridge fields make it assertable:
+
+| Field | Type | Notes |
+|---|---|---|
+| `musicTrack` | `string \| null` | The active track (`'hub' \| 'planet'`). Only the Planet scene wires `getState`, so via the bridge you read `'planet'` once `sceneKey === 'Planet'`. Hub music is observable only by the autoplay warnings it emits on Boot→Hub (and by the unit tests). |
+| `musicState` | `string` | The music WebAudio context state (`'unavailable' \| 'suspended' \| 'running'`). Same perceptual autoplay-resume caveat as `audioState`. |
+
+Verified live at `?solo=1&test=1`: entering planet-1 reports `musicTrack === 'planet'` and
+`musicState === 'running'`. **Audibility stays perceptual** — assert the track/state, not sound.
+
+### Camera feel (follow + pinned HUD)
+
+The same milestone made the camera lerp-follow the astronaut. Only **camera** bounds are widened into the
+flat-colour margin (the physics world is untouched, so all reach-math is byte-identical); persistent HUD +
+cast banners are `setScrollFactor(0)`, and `showWin()` `stopFollow()` + `centerOn` so the end-card sits in
+its designed frame. It is **view-only** — no `BridgeState` field. Verify visually with a screenshot pair
+(spawn vs. driven-right): the camera reveals the goal/dark-zone that were off-screen at spawn while the HUD
+stays put.
 
 ## Load-bearing semantics (important for honest negative tests)
 
