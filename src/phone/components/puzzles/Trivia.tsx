@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import type { PuzzleTheme } from '../../../shared/protocol';
+import { paletteFor } from '../../puzzleThemes';
 
 export type Question = {
   prompt: string;
@@ -92,6 +94,7 @@ interface Props {
   timerSeconds?: number;
   /** Talent "Second Chance": a wrong answer no longer resets to question 1. */
   forgiveMistakes?: boolean;
+  theme?: PuzzleTheme;
 }
 
 export function Trivia({
@@ -100,7 +103,9 @@ export function Trivia({
   questionPool = QUESTIONS,
   timerSeconds = 30,
   forgiveMistakes = false,
+  theme,
 }: Props) {
+  const pal = paletteFor(theme);
   const [round, setRound] = useState<Question[]>(() => sampleQuestions(questionPool, ROUND_SIZE));
   const [idx, setIdx] = useState(0);
   const [wrong, setWrong] = useState(false);
@@ -168,8 +173,8 @@ export function Trivia({
           fontSize: '14px',
         }}
       >
-        <span style={{ opacity: 0.6 }}>
-          Illuminate · {idx + 1}/{round.length}
+        <span style={{ opacity: 0.6, color: pal.glyph ? pal.accent : undefined }}>
+          {pal.glyph && `${pal.glyph} `}Illuminate · {idx + 1}/{round.length}
         </span>
         <span style={{ color: timeColor }}>⏱ {secondsLeft}s</span>
       </div>
@@ -181,7 +186,7 @@ export function Trivia({
           padding: '20px',
           borderRadius: '14px',
           background: '#1a1b3a',
-          border: `1px solid ${ACCENT}40`,
+          border: `1px solid ${pal.glyph ? pal.glow : `${ACCENT}40`}`,
           fontSize: '20px',
           lineHeight: 1.35,
           textAlign: 'center',

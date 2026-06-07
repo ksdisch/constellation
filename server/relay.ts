@@ -17,5 +17,8 @@ export function relayForward(msg: ClientToServerMsg): ServerToClientMsg | null {
   if (msg.type === 'planet-complete') {
     return { type: 'planet-complete' };
   }
+  if (msg.type === 'planet-started') {
+    return { type: 'planet-started', theme: msg.theme };
+  }
   return null;
 }
