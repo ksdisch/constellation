@@ -1,0 +1,14 @@
+node_modules
+dist
+.vite
+.git
+.claude
+.env
+.env.local
+*.log
+.DS_Store
+# Client-only sources — the relay image needs only server/ + src/shared.
+src/game
+src/phone
+index.html
+phone.html

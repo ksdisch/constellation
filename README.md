@@ -22,6 +22,12 @@ Ports: Vite on **5180**, websocket relay on **3081** (both configurable — see 
 
 The dev server binds to `0.0.0.0` so the phone can reach it on the same wifi — Vite will print the LAN URL on start.
 
+## Deploy
+
+The relay ships with a `Dockerfile` + `fly.toml` (and a `/healthz` endpoint); the
+clients build to static files pointed at the relay via `VITE_RELAY_URL`. Full
+walkthrough — relay → Fly, clients → itch.io — in [docs/DEPLOY.md](docs/DEPLOY.md).
+
 ## Stack
 
 - **Game client** (`src/game/`) — Phaser 3 + TypeScript
