@@ -1,3 +1,4 @@
+import { createServer } from 'node:http';
 import { WebSocketServer, WebSocket } from 'ws';
 import type { ClientToServerMsg, ServerToClientMsg } from '../src/shared/protocol';
 import { relayForward } from './relay';
@@ -30,7 +31,20 @@ function send(ws: WebSocket, msg: ServerToClientMsg): void {
   ws.send(JSON.stringify(msg));
 }
 
-const wss = new WebSocketServer({ port: PORT });
+// Serve HTTP and the WebSocket upgrade on the SAME port. A platform
+// `http_service` (Fly, etc.) terminates TLS and forwards one internal port, so
+// `GET /` must answer for health checks while `wss://` upgrades pass through.
+const httpServer = createServer((req, res) => {
+  if (req.url === '/healthz' || req.url === '/') {
+    res.writeHead(200, { 'content-type': 'text/plain' });
+    res.end('constellation relay ok\n');
+    return;
+  }
+  res.writeHead(404, { 'content-type': 'text/plain' });
+  res.end('not found\n');
+});
+
+const wss = new WebSocketServer({ server: httpServer });
 
 wss.on('connection', (ws) => {
   let assignedRoom: Room | null = null;
@@ -115,4 +129,6 @@ wss.on('connection', (ws) => {
   });
 });
 
-console.log(`Constellation relay listening on ws://localhost:${PORT}`);
+httpServer.listen(PORT, () => {
+  console.log(`Constellation relay listening on ws://localhost:${PORT} (health: GET /healthz)`);
+});

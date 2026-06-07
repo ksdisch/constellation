@@ -19,33 +19,46 @@ Pick items with the `project-backlog` skill in Claude Code.
 - **Size:** S
 - **Added:** 2026-05-12
 
-### [Feature] Deploy — relay to Fly.io (or Cloudflare DO), game client to itch.io
-- **Why:** M5. The actual ship. Without deployment, the game can't leave your wifi.
-- **Acceptance:** Relay server running on a free-tier host with a public wss:// URL. Game client built and uploaded as an itch.io HTML5 project, pointing at the deployed relay. End-to-end test: laptop on home wifi, phone on cellular, full co-op loop works.
-- **Size:** M
-- **Added:** 2026-05-12
-
-### [Exploration] Decide on session persistence — save progress between sessions, or fresh each time?
-- **Why:** Open question from the plan. Affects hub-unlock design, save-file format, and how playtests work (do you start from scratch each session?). Plan leaned "fresh for MVP" but worth a real decision before the hub lands.
-- **Acceptance:** Written decision (in the plan doc or a new ADR-style note) on: persist or not, and if so, what to persist (unlocked planets only? puzzle stats?) and where (localStorage on the game client is simplest).
-- **Size:** S
+### [Feature] Deploy — push the relay + clients to a public host (the actual ship)
+- **Why:** M5. The remaining account-bound finish: deploy readiness (container, health endpoint, env-driven relay URL, docs) shipped 2026-06-07 — see Done. What's left needs **your** Fly + itch.io accounts.
+- **Acceptance:** `fly deploy` the relay (config is in-repo), build the clients with `VITE_RELAY_URL=wss://<app>.fly.dev`, upload `dist/` to itch.io. End-to-end: laptop on home wifi, phone on cellular, full co-op loop works. Step-by-step in `docs/DEPLOY.md`.
+- **Size:** S (groundwork done; this is the credentialed finish)
 - **Added:** 2026-05-12
 
 ---
 
 ## In Progress
 
-### [Feature] Galaxy hub scene with planet nodes
-- **Why:** M4 in the plan. Connects multiple levels into a campaign arc and gives the project its cartoon-galaxy identity. Without it, each level is an island.
-- **Acceptance:** New Phaser scene showing a starry galaxy map with planet nodes. Selecting a planet loads its level. At least one planet (the current corridor level, retitled) is reachable from the hub. Hub remembers which planets are unlocked (in-memory for now — persistence is a separate item).
-- **Size:** L
-- **Added:** 2026-05-12
-- **Started:** 2026-05-14
-- **Note:** Scoped as the M4 foundation orchestrator (`.claude/orchestrator-prompt.md`): Phase 1 refactors `Level.ts` → data-driven `Planet.ts` taking a `PlanetConfig`; Phase 2 adds `HubScene` with one playable planet node + two locked placeholders, plus a "Return to Hub" win-screen button alongside "Play again". Planet 2 (ice) and Planet 3 (library) are separate orchestrator runs on top. Unlock state is in-memory only; persistence is an M5 question.
+_(nothing in flight)_
 
 ---
 
 ## Done
+
+### [Feature] Deploy readiness — env relay URL + relay container/health + deploy docs (M5)
+- **Why:** M5 "the ship" groundwork. Two blockers stood between the prototype and a public host: both clients hardcoded `ws://<page-host>:3081` (wrong for a deployed client on a different host + TLS port), and the relay had no host config or HTTP health surface (a bare `WebSocketServer({ port })` serves no HTTP, so platform checks fail).
+- **Acceptance:** Build-time `VITE_RELAY_URL` override on both net clients (unset → unchanged LAN inference, so `npm run dev` is byte-identical); relay now serves HTTP `/healthz` + the WS upgrade on one port (`node:http` + `WebSocketServer({ server })`) for TLS-terminated `http_service` hosting; `Dockerfile` + `.dockerignore` + `fly.toml` (force_https, health check) for the relay; `docs/DEPLOY.md` (relay→Fly, clients→itch.io, env wiring, e2e). The actual `fly deploy` / itch upload is account-bound and stays the user's step.
+- **Size:** M
+- **Added:** 2026-06-07
+- **Completed:** 2026-06-07
+- **Note:** Built by the `/autonomous-milestone` workflow. Relay forwarding logic untouched (the pure `relayForward()` + its 105-test suite unchanged); the only server change is wrapping the WS server in a `node:http` server that answers `GET /` and `/healthz` with `200 "constellation relay ok"` on the **same** port — exactly what a single-internal-port `http_service` wants. New `src/vite-env.d.ts` types `import.meta.env.VITE_RELAY_URL` (strict-safe, no `vite/client` pull-in). New `npm run start:relay` (the container CMD, honors `$PORT`) and `npm run smoke:relay` — a real-socket harness (`scripts/smoke-relay.ts`) that boots the actual relay and asserts health + the full create-room→join→**boosted** cast→`power-cast`→`planet-complete` round-trip. Verified: typecheck clean, 105 Vitest green, `smoke:relay` green, and a `VITE_RELAY_URL=…` production build bakes the URL into **both** bundles while a no-env build contains zero occurrences (LAN dev preserved). **Deliberate cuts:** relay-only container (clients are static, hosted separately); kept `tsx` as the runtime (locked-stack tool, no compile step); Cloudflare DO left as a noted non-goal (needs a different adapter).
+
+### [Feature] Galaxy hub scene with planet nodes
+- **Why:** M4 in the plan. Connects multiple levels into a campaign arc and gives the project its cartoon-galaxy identity. Without it, each level is an island.
+- **Acceptance:** New Phaser scene showing a starry galaxy map with planet nodes. Selecting a planet loads its level. At least one planet (the current corridor level, retitled) is reachable from the hub. Hub remembers which planets are unlocked.
+- **Size:** L
+- **Added:** 2026-05-12
+- **Started:** 2026-05-14
+- **Completed:** 2026-06-05
+- **Note:** Shipped: `src/game/scenes/Hub.ts` renders the starry node map, launches a planet on click (stub nodes show "Coming soon"), and reads unlock state from the durable `constellation:progress` localStorage save (`src/game/progression/save.ts`). Phase 1 refactored `Level.ts` → data-driven `Planet.ts` taking a `PlanetConfig`; "Return to Hub" + "Play again" both wired on the win screen. Unlock state, in-memory at first, became durable with the progression spine — which also resolved the session-persistence question (below).
+
+### [Exploration] Decide on session persistence — save progress between sessions, or fresh each time?
+- **Why:** Open question from the plan. Affects hub-unlock design, save-file format, and how playtests work.
+- **Acceptance:** A decision on persist-or-not, what to persist, and where.
+- **Size:** S
+- **Added:** 2026-05-12
+- **Completed:** 2026-06-06
+- **Note:** Resolved as **persist, in `localStorage`, per device.** Two versioned, guarded, never-throw saves landed with the progression spine + talents: game-side `constellation:progress` (`{ schemaVersion, unlockedPlanets, completed }`, `src/game/progression/save.ts`) and phone-side `constellation:talents` (`{ schemaVersion, stardust, unlocked }`, `src/phone/talents/save.ts`). Both load on init and survive reload; schema-versioned with load-time orphan pruning. No server-side save (the relay stays stateless).
 
 ### [Feature] Strength talents — partner-directed power boosts, visible to both players (M8)
 - **Why:** The deferred *strength* half of Player Specialization (`docs/ideas/specialization.md`). M7 shipped accommodation (phone-only "make MY puzzle cozier"); strength was held back because magnitude-coupling to the laptop risked level balance. It doesn't here — every boost is monotonically *more forgiving* for the astronaut — so this is now safe, and it finally makes talents **visible to both players**.
