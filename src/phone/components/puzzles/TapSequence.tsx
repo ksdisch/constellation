@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { PuzzleTheme } from '../../../shared/protocol';
+import { paletteFor } from '../../puzzleThemes';
 
 interface Props {
   onSolved: () => void;
@@ -7,6 +9,7 @@ interface Props {
   sequenceLength?: number;
   /** Talent "First Light": light the first color as a free hint while at step 0. */
   revealFirst?: boolean;
+  theme?: PuzzleTheme;
 }
 
 const CELL_COLORS = ['#7ad8ff', '#9a7aff', '#ffd166', '#98ffc8'];
@@ -22,7 +25,9 @@ export function TapSequence({
   totalSeconds = 25,
   sequenceLength = 5,
   revealFirst = false,
+  theme,
 }: Props) {
+  const pal = paletteFor(theme);
   const sequence = useMemo(
     () => Array.from({ length: sequenceLength }, () => Math.floor(Math.random() * CELL_COLORS.length)),
     [sequenceLength]
@@ -119,7 +124,9 @@ export function TapSequence({
           fontSize: '14px',
         }}
       >
-        <span style={{ opacity: 0.6 }}>Summon Platform · {statusLabel}</span>
+        <span style={{ opacity: 0.6, color: pal.glyph ? pal.accent : undefined }}>
+          {pal.glyph && `${pal.glyph} `}Summon Platform · {statusLabel}
+        </span>
         <span style={{ color: timeColor }}>⏱ {secondsLeft}s</span>
       </div>
 
@@ -131,6 +138,9 @@ export function TapSequence({
           width: '100%',
           aspectRatio: '1 / 1',
           maxWidth: '300px',
+          padding: pal.glyph ? '10px' : 0,
+          borderRadius: '22px',
+          boxShadow: pal.glyph ? `0 0 22px ${pal.glow}55` : 'none',
         }}
       >
         {CELL_COLORS.map((color, i) => {

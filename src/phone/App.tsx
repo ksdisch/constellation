@@ -16,7 +16,7 @@ import {
   unlockTalent,
   type TalentState,
 } from './talents/save';
-import type { PowerId } from '../shared/protocol';
+import type { PowerId, PuzzleTheme } from '../shared/protocol';
 
 /** Bonus stardust the phone earns when the laptop clears a planet (M8). */
 const PLANET_BONUS = 3;
@@ -35,7 +35,7 @@ const FEEDBACK: Record<PowerId, { title: string; color: string; sub: string }> =
  * (a per-key param type would break the correlated-union call below).
  */
 type PuzzleProps = { onSolved: () => void; onCancel: () => void };
-type PuzzleArgs = PuzzleProps & { tuning: PuzzleOverrides };
+type PuzzleArgs = PuzzleProps & { tuning: PuzzleOverrides; theme: PuzzleTheme };
 
 /**
  * Exhaustive puzzle router, keyed by PowerId. `satisfies Record<PowerId, …>`
@@ -62,6 +62,9 @@ type Phase =
 export function App() {
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
   const [error, setError] = useState<string | null>(null);
+  // Which planet the laptop is on, so puzzles can reskin to match. Set by the
+  // game's `planet-started` message; defaults to the unchanged look.
+  const [puzzleTheme, setPuzzleTheme] = useState<PuzzleTheme>('default');
   const [talents, setTalents] = useState<TalentState>(() => loadTalents());
   const clientRef = useRef<PhoneNetClient | null>(null);
 
@@ -94,6 +97,9 @@ export function App() {
       if (msg.type === 'joined') {
         setPhase({ kind: 'spellbook', roomCode: msg.roomCode });
         setError(null);
+      } else if (msg.type === 'planet-started') {
+        // The laptop entered (or restarted) a planet — theme the puzzles to match.
+        setPuzzleTheme(msg.theme);
       } else if (msg.type === 'planet-complete') {
         // The laptop cleared a planet — earn bonus stardust and flash a toast.
         setTalents((t) => {
@@ -194,6 +200,7 @@ export function App() {
         error,
         talents,
         tuning,
+        theme: puzzleTheme,
       })}
       {bonus !== null && <BonusToast amount={bonus} />}
     </div>
@@ -238,6 +245,7 @@ function renderPhase(
     error: string | null;
     talents: TalentState;
     tuning: PuzzleOverrides;
+    theme: PuzzleTheme;
   }
 ) {
   if (phase.kind === 'idle' || phase.kind === 'connecting') {
@@ -275,7 +283,7 @@ function renderPhase(
     return <TalentTree state={actions.talents} onUnlock={actions.unlock} onBack={actions.closeTalents} />;
   }
   if (phase.kind === 'puzzle') {
-    return PUZZLES[phase.power]({ onSolved: actions.onSolved, onCancel: actions.onCancel, tuning: actions.tuning });
+    return PUZZLES[phase.power]({ onSolved: actions.onSolved, onCancel: actions.onCancel, tuning: actions.tuning, theme: actions.theme });
   }
   // cast-feedback
   const f = FEEDBACK[phase.power];

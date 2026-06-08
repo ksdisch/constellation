@@ -91,6 +91,8 @@ export const planet2Config: PlanetConfig = {
   // Dark Rectangle masking the hidden platform region (cosmetic only).
   darkZone: { x: HIDDEN_PLATFORM_X, y: HIDDEN_PLATFORM_Y, width: 160, height: 110 },
   fallRespawnY: 600,
+  // ICE puzzle theme — frosts the phone puzzles (snowflake glyph + cold accents).
+  puzzleTheme: 'ice',
   // ICE palette: cold blues / whites. Opt-in — drives Boot texture generation
   // and the camera background. background is a CSS color; the rest are 0xRRGGBB.
   theme: {

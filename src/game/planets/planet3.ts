@@ -84,6 +84,8 @@ export const planet3Config: PlanetConfig = {
   fallRespawnY: 600,
   // The Phase Dash gate.
   hazardLane: { x: HAZARD_X, y: HAZARD_Y, width: HAZARD_WIDTH, height: HAZARD_HEIGHT },
+  // NEBULA puzzle theme — violet glyph + accents on the phone puzzles.
+  puzzleTheme: 'nebula',
   // NEBULA palette: deep violet field, dusky-violet terrain, magenta platform.
   // The teal plasma curtain (HAZARD_COLOR) is complementary, so it pops.
   theme: {

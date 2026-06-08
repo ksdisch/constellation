@@ -6,6 +6,8 @@
  * matched 1:1 to the default texture set (ground/ceiling/platform/hidden-
  * platform/enemy/goal). Boot generates `<key>-<planetId>` textures from these.
  */
+import type { PuzzleTheme } from '../../shared/protocol';
+
 export type PlanetTheme = {
   background: string;
   ground: number;
@@ -30,6 +32,9 @@ export type PlanetConfig = {
   fallRespawnY: number;
   // OPT-IN visual theme. Omit (as planet1Config does) for the default look.
   theme?: PlanetTheme;
+  // OPT-IN puzzle theme announced to the phone (`planet-started`) so its puzzles
+  // reskin to match this planet. Omit for the default puzzle look.
+  puzzleTheme?: PuzzleTheme;
   // OPT-IN Phase Dash hazard — a full-height "plasma curtain" the astronaut can
   // only cross while phased. {x,y} is the center; height should span the play
   // area top-to-ground so it can't be jumped over. Omit (planet-1/2) for none.

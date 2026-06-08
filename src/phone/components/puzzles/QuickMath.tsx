@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { PuzzleTheme } from '../../../shared/protocol';
+import { paletteFor } from '../../puzzleThemes';
 
 type Op = '+' | '−' | '×';
 interface Problem {
@@ -34,9 +36,11 @@ interface Props {
   onCancel: () => void;
   totalSeconds?: number;
   problemCount?: number;
+  theme?: PuzzleTheme;
 }
 
-export function QuickMath({ onSolved, onCancel, totalSeconds = 30, problemCount = 3 }: Props) {
+export function QuickMath({ onSolved, onCancel, totalSeconds = 30, problemCount = 3, theme }: Props) {
+  const pal = paletteFor(theme);
   const problems = useMemo(
     () => Array.from({ length: problemCount }, makeProblem),
     [problemCount]
@@ -108,13 +112,13 @@ export function QuickMath({ onSolved, onCancel, totalSeconds = 30, problemCount 
           fontSize: '14px',
         }}
       >
-        <span style={{ opacity: 0.6 }}>
-          Freeze Stars · {idx + 1}/{problems.length}
+        <span style={{ opacity: 0.6, color: pal.glyph ? pal.accent : undefined }}>
+          {pal.glyph && `${pal.glyph} `}Freeze Stars · {idx + 1}/{problems.length}
         </span>
         <span style={{ color: timeColor }}>⏱ {secondsLeft}s</span>
       </div>
 
-      <div style={{ fontSize: '64px', fontWeight: 700, margin: '12px 0', letterSpacing: '4px' }}>
+      <div style={{ fontSize: '64px', fontWeight: 700, margin: '12px 0', letterSpacing: '4px', color: pal.glyph ? pal.glow : undefined }}>
         {current.a} {current.op} {current.b}
       </div>
 

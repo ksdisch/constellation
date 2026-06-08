@@ -178,9 +178,19 @@ export class PlanetScene extends Phaser.Scene {
         linkIndicator.setColor('#ff9090');
         return;
       }
+      // A phone that joins (or rejoins) mid-planet gets the theme so its puzzles
+      // match this planet without waiting for the next scene start.
+      if (msg.type === 'phone-joined') {
+        this.announceTheme();
+        return;
+      }
       if (msg.type !== 'power-cast') return;
       this.castPower(msg.powerId, msg.boosted ?? false);
     });
+
+    // Tell the phone which theme to dress its puzzles in. Forwarded by the relay;
+    // a missing/late phone is a harmless no-op (and is re-served on phone-joined).
+    this.announceTheme();
 
     if (this.solo) {
       this.add
@@ -293,6 +303,11 @@ export class PlanetScene extends Phaser.Scene {
         startPlanet: (id) => this.startPlanetById(id),
       });
     }
+  }
+
+  /** Announce this planet's puzzle theme to the phone (relay-forwarded). */
+  private announceTheme() {
+    this.net.send({ type: 'planet-started', theme: this.config.puzzleTheme ?? 'default' });
   }
 
   update() {

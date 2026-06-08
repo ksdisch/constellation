@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import type { PuzzleTheme } from '../../../shared/protocol';
+import { paletteFor } from '../../puzzleThemes';
 
 /**
  * Phase Align — the Phase Dash puzzle.
@@ -19,6 +21,7 @@ interface Props {
   onCancel: () => void;
   totalSeconds?: number;
   dialCount?: number;
+  theme?: PuzzleTheme;
 }
 
 const ACCENT = '#5eead4';
@@ -29,7 +32,8 @@ function randomMisaligned(): number {
   return MISALIGNED[Math.floor(Math.random() * MISALIGNED.length)];
 }
 
-export function PhaseAlign({ onSolved, onCancel, totalSeconds = 30, dialCount = 4 }: Props) {
+export function PhaseAlign({ onSolved, onCancel, totalSeconds = 30, dialCount = 4, theme }: Props) {
+  const pal = paletteFor(theme);
   const [dials, setDials] = useState<number[]>(() =>
     Array.from({ length: dialCount }, randomMisaligned)
   );
@@ -87,13 +91,13 @@ export function PhaseAlign({ onSolved, onCancel, totalSeconds = 30, dialCount = 
           fontSize: '14px',
         }}
       >
-        <span style={{ opacity: 0.6 }}>
-          Phase Align · {alignedCount}/{dials.length} aligned
+        <span style={{ opacity: 0.6, color: pal.glyph ? pal.accent : undefined }}>
+          {pal.glyph && `${pal.glyph} `}Phase Align · {alignedCount}/{dials.length} aligned
         </span>
         <span style={{ color: timeColor }}>⏱ {secondsLeft}s</span>
       </div>
 
-      <p style={{ margin: 0, fontSize: '13px', opacity: 0.6, textAlign: 'center' }}>
+      <p style={{ margin: 0, fontSize: '13px', opacity: 0.6, textAlign: 'center', color: pal.glyph ? pal.glow : undefined }}>
         Tap each dial until every arrow points up.
       </p>
 

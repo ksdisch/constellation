@@ -93,7 +93,14 @@ async function main(): Promise<void> {
     }
     console.log('✓ boosted cast round-trips (powerId + boosted preserved)');
 
-    // 5. planet-complete: game → relay → phone.
+    // 5. planet-started: game → relay → phone, carrying the puzzle theme (M9).
+    const phoneTheme = next(phone, (m) => m.type === 'planet-started', 'planet-started');
+    send(game, { type: 'planet-started', theme: 'ice' });
+    const started = (await phoneTheme) as { theme: string };
+    if (started.theme !== 'ice') fail(`planet-started theme mismatch: ${JSON.stringify(started)}`);
+    console.log('✓ planet-started round-trips (theme preserved)');
+
+    // 6. planet-complete: game → relay → phone.
     const phoneComplete = next(phone, (m) => m.type === 'planet-complete', 'planet-complete');
     send(game, { type: 'planet-complete' });
     await phoneComplete;

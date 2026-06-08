@@ -35,6 +35,13 @@ describe('relayForward', () => {
     expect(relayForward({ type: 'planet-complete' })).toEqual({ type: 'planet-complete' });
   });
 
+  it('forwards planet-started carrying the puzzle theme (M9)', () => {
+    expect(relayForward({ type: 'planet-started', theme: 'ice' })).toEqual({
+      type: 'planet-started',
+      theme: 'ice',
+    });
+  });
+
   it('does not peer-forward room-setup messages (handled separately)', () => {
     const setup: ClientToServerMsg[] = [
       { type: 'create-room', role: 'game' },
