@@ -13,6 +13,13 @@ Pick items with the `project-backlog` skill in Claude Code.
 
 ## Open
 
+### [Exploration] The Planet That Knows You Two — a galaxy grown from your shared rhythm
+- **Why:** Grow each planet from a recorded portrait of how *this pair* plays (a generator emits the `PlanetConfig` + per-role difficulty from the dyad's solve-rhythm) so the galaxy becomes a keepsake of the relationship, not disposable hand-authored content. Bold bet that "this place is OURS" beats authored polish for an audience of two. See [`docs/ideas/planet-that-knows-you-two.md`](docs/ideas/planet-that-knows-you-two.md) for the full vision.
+- **Acceptance:** Prototype the credible first step — schema-v2 per-role solve telemetry behind `save.ts`'s `migrate()` seam + a read-only end-of-planet "portrait" card — and judge whether the portrait *feels true* (the precondition that earns trust for any generation). No procedural generation in this first cut.
+- **Size:** L
+- **Added:** 2026-06-07
+- **Note:** Surfaced by the `/moonshot` workflow (tethered run, boldness 5/5). Flips assumption ④ (hand-authored content); advances the open "session persistence" decision below; depends on the M2 "is it fun?" gate. Supersedes the accommodation half of [`docs/ideas/specialization.md`](docs/ideas/specialization.md).
+
 ### [Exploration] Playtest M2 with girlfriend — the "is it fun?" gate
 - **Why:** The plan explicitly names this as the critical gate before any M3 work. The whole asymmetric premise lives or dies here. If the loop doesn't feel fun, the power-to-puzzle pairing or the asymmetry itself may need to change before more code gets written.
 - **Acceptance:** Play one full session (handshake → spellbook → Quick Math → freeze → run past enemy → win). Write down: did the cast feel rewarding? Was the puzzle the right difficulty? Did the 3-second freeze feel tight or generous? Did the pairing feel meaningful or arbitrary?
