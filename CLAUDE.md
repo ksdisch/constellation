@@ -82,19 +82,27 @@ Repo-local Claude Code slash commands (`.claude/commands/`) and skills (`.claude
 - `/explore-plan` — explore → plan → confirm before any code; proposes 2–3 ranked approaches and waits for a pick.
 - `/tdd` — test-first loop: write failing tests, confirm they fail for the right reason, then code until green without editing the tests.
 - 💻 `/screenshot-iterate` — **local-only** visual loop: implement → screenshot the running app → compare to a mock → iterate.
+- `/verify-planet` — headlessly verify a planet end-to-end (default `planet-1`): boots `?solo=1&test=1` via the pinned `playwright` MCP and runs the `docs/AUTONOMY.md` playbook subset for that planet, emitting per-step PASS/FAIL + a verdict. Needs the dev server running and the `.mcp.json` MCP loaded. *Repo-specific (built here).*
 
 **Skills** (auto-trigger by description, or invoke explicitly)
 
 - `new-power` — scaffold a new astronaut power across every side of the power contract (protocol `PowerId` → Spellbook tile → puzzle component cloned from `QuickMath.tsx` → `App.tsx` `FEEDBACK` + render chain → `castPower()` switch in `Planet.ts`). Invoke with `/new-power` after the power is designed. *Repo-specific (built here).*
+- `new-planet` — scaffold a new planet across the planet contract (`planetN.ts` config implementing `PlanetConfig` → colocated `planetN.test.ts` cloned from the `planet3` template → ordered `PLANETS` entry in `registry.ts`, where **array order = progression**; `Boot.ts` picks up theme textures automatically). Invoke with `/new-planet` after the layout is designed. Sibling of `new-power`. *Repo-specific (built here).*
 - 💻 `match-the-mock` — **local-only**: implement a UI against a mock/Figma and iterate via screenshots until it matches. Auto-triggering sibling of `/screenshot-iterate`.
 
 **Subagents** (role prompts in `.claude/agents/` — dispatched inline via `subagent_type: "general-purpose"`, NOT registered subagent types; see the file header)
 
 - `power-contract-reviewer` — read-only audit of a diff for the power contract + wire-protocol boundary; PASS/FAIL with `file:line` evidence. Catches the two sides the compiler does *not* guard (the Spellbook tile and the `App.tsx` render `if`-chain). *Repo-specific (built here).*
+- `phone-ui-reviewer` — read-only audit of any `src/phone` diff for the conventions `tsc` can't see: inline-style-only (no CSS/`className`), the `#1a1b3a`/`#7ad8ff`/`#ff6b9d` palette, ≥44px touch targets, and the `solvedRef` double-fire guard. PASS/FAIL with `file:line`. Complements `power-contract-reviewer` (wiring) without overlapping it. *Repo-specific (built here).*
 
 **Hooks** (`.claude/settings.json` → scripts in `.claude/hooks/`, shared with collaborators)
 
 - `protocol-boundary-guard` (PreToolUse) — non-blocking reminder when `src/shared/protocol.ts` is edited: update both clients in the same commit; wire the full power contract.
 - `typecheck-on-edit` (PostToolUse) — runs `tsc --noEmit` after `*.ts/*.tsx` edits and feeds errors back (blocking; flip the trailing `exit 2`→`exit 0` in the script to make it advisory).
+- `colocated-test-on-edit` (PostToolUse) — runs **only** the colocated Vitest sibling of an edited `src/*.ts` (or the test itself); complements `typecheck-on-edit` (types) by catching pure-logic regressions (blocking: `exit 2` feeds the failing test back; fast-exits when no sibling test exists).
+
+**MCP servers** (`.mcp.json`, shared with collaborators)
+
+- `playwright` — project-pinned browser driver (run via `npx @playwright/mcp@latest`, so nothing lands in `package.json`). Makes the `?test=1` headless-bridge playbook (`docs/AUTONOMY.md`) reproducible in cloud sessions / for collaborators; tools surface as `mcp__playwright__*`. Drives `/verify-planet`.
 
 To vendor more of your global commands/skills or brainstorm new repo-specific automations, run `/claudify-repo`.
