@@ -9,3 +9,6 @@ dist/
 # Claude Code worktree machinery and local launch config
 .claude/worktrees/
 .claude/launch.json
+
+# Playwright MCP scratch output (headless verification artifacts)
+.playwright-mcp/

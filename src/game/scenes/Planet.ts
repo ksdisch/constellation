@@ -4,7 +4,8 @@ import { Enemy } from '../entities/Enemy';
 import type { GameNetClient } from '../net/client';
 import type { PowerId } from '../../shared/protocol';
 import type { PlanetConfig } from '../planets/planet1';
-import { loadProgress, markPlanetComplete, saveProgress } from '../progression/save';
+import { loadProgress, markPlanetComplete, recordPlanetRun, saveProgress } from '../progression/save';
+import { buildPortrait } from '../progression/portrait';
 import { PLANETS } from '../planets/registry';
 import { isTestMode, setBridgeProviders } from '../testBridge';
 import { JuiceController } from '../juice/effects';
@@ -67,6 +68,12 @@ export class PlanetScene extends Phaser.Scene {
   // lets a re-cast supersede a prior window's expiry callback cleanly.
   private phaseActive = false;
   private phaseToken = 0;
+  // Rhythm telemetry (M10). planetStartTime is the scene clock at create(); the
+  // clear duration is `time.now - planetStartTime`. solveTimings buffers the
+  // phone player's per-puzzle solve durations (from the `solveMs` wire field) for
+  // this run, folded into persisted telemetry at showWin().
+  private planetStartTime = 0;
+  private solveTimings: { power: PowerId; ms: number }[] = [];
 
   constructor() {
     super({ key: 'Planet' });
@@ -94,6 +101,7 @@ export class PlanetScene extends Phaser.Scene {
     this.lastCastPower = null;
     this.lastCastBoosted = false;
     this.phaseActive = false;
+    this.solveTimings = [];
     // Drop any cue recorded by a prior run so the bridge starts clean (keeps the
     // audio context alive — see resetLastCue vs resetAudio).
     resetLastCue();
@@ -105,6 +113,10 @@ export class PlanetScene extends Phaser.Scene {
     if (this.config.theme) {
       this.cameras.main.setBackgroundColor(this.config.theme.background);
     }
+
+    // Stamp the run start for the clear-duration telemetry (M10). Scene clock,
+    // not wall-clock, so it's monotonic within the scene and resets on restart.
+    this.planetStartTime = this.time.now;
 
     // Scene-bound juice applier (SFX + screen shake + particle bursts).
     this.juice = new JuiceController(this);
@@ -185,6 +197,11 @@ export class PlanetScene extends Phaser.Scene {
         return;
       }
       if (msg.type !== 'power-cast') return;
+      // Buffer the phone player's solve duration for this run's rhythm portrait.
+      // Recorded only — casting is byte-identical whether or not solveMs is set.
+      if (typeof msg.solveMs === 'number') {
+        this.solveTimings.push({ power: msg.powerId, ms: msg.solveMs });
+      }
       this.castPower(msg.powerId, msg.boosted ?? false);
     });
 
@@ -297,6 +314,7 @@ export class PlanetScene extends Phaser.Scene {
             audioState: getAudioState(),
             musicTrack: getMusicTrack(),
             musicState: getMusicState(),
+            telemetry: progress.telemetry[this.config.id] ?? null,
           };
         },
         cast: (id) => this.castPower(id),
@@ -495,11 +513,17 @@ export class PlanetScene extends Phaser.Scene {
     this.cameras.main.flash(220, 152, 255, 200);
 
     // Durably record the completion: mark this planet complete (which unlocks
-    // the next in the chain) and persist. markPlanetComplete is pure, so we
-    // read the latest persisted state, derive the new state, and save it.
+    // the next in the chain), fold this run into the rhythm telemetry (M10), and
+    // persist. Both transforms are pure, so we read the latest persisted state,
+    // derive the new state, and save it once.
     const prev = loadProgress();
     const firstClear = prev.completed[this.config.id] !== true;
-    const next = markPlanetComplete(prev, this.config.id);
+    const clearMs = Math.max(0, this.time.now - this.planetStartTime);
+    const next = recordPlanetRun(
+      markPlanetComplete(prev, this.config.id),
+      this.config.id,
+      { clearMs, respawns: this.respawnCount, solves: this.solveTimings },
+    );
     saveProgress(next);
     const nextUnlocked = new Set(next.unlockedPlanets);
 
@@ -509,23 +533,29 @@ export class PlanetScene extends Phaser.Scene {
     // be absent (solo), in which case this is a harmless no-op send.
     if (firstClear) this.net.send({ type: 'planet-complete' });
 
-    this.add.rectangle(480, 270, 960, 540, 0x000000, 0.65);
+    this.add.rectangle(480, 270, 960, 540, 0x000000, 0.72);
     this.add
-      .text(480, 240, 'Level complete!', {
+      .text(480, 44, 'Level complete!', {
         fontFamily: 'system-ui, sans-serif',
-        fontSize: '48px',
+        fontSize: '30px',
         color: '#98ffc8',
         fontStyle: 'bold',
       })
       .setOrigin(0.5);
 
+    // The rhythm "portrait" card (M10) — a read-only keepsake of how this pair
+    // just played. The telemetry is guaranteed present (recordPlanetRun just
+    // wrote it); buildPortrait is pure, so the scene only lays out its strings.
+    const portrait = buildPortrait(this.config.name, next.telemetry[this.config.id]);
+    const buttonY = this.renderPortraitCard(portrait);
+
     // "Play again" — left button, mint green
     const restartButton = this.add
-      .rectangle(380, 310, 180, 48, 0x98ffc8)
+      .rectangle(380, buttonY, 180, 48, 0x98ffc8)
       .setStrokeStyle(2, 0xffffff, 0.4)
       .setInteractive({ useHandCursor: true });
     this.add
-      .text(380, 310, 'Play again', {
+      .text(380, buttonY, 'Play again', {
         fontFamily: 'system-ui, sans-serif',
         fontSize: '18px',
         color: '#1a1b3a',
@@ -543,11 +573,11 @@ export class PlanetScene extends Phaser.Scene {
 
     // "Return to Hub" — right button, slate
     const hubButton = this.add
-      .rectangle(580, 310, 180, 48, 0xa8b0d8)
+      .rectangle(580, buttonY, 180, 48, 0xa8b0d8)
       .setStrokeStyle(2, 0xffffff, 0.4)
       .setInteractive({ useHandCursor: true });
     this.add
-      .text(580, 310, 'Return to Hub', {
+      .text(580, buttonY, 'Return to Hub', {
         fontFamily: 'system-ui, sans-serif',
         fontSize: '18px',
         color: '#1a1b3a',
@@ -561,5 +591,65 @@ export class PlanetScene extends Phaser.Scene {
       // Fresh clone per button so no scene shares a mutable Set reference.
       unlockedPlanets: new Set(nextUnlocked),
     }));
+  }
+
+  /**
+   * Draw the rhythm portrait card (a panel + title + label/value rows + footer)
+   * centred under the "Level complete!" header. Returns the y for the action
+   * buttons, placed just below the panel so the layout flexes with line count.
+   * Drawn in world coords (camera was recentred in showWin, so world == screen).
+   */
+  private renderPortraitCard(portrait: { title: string; lines: { label: string; value: string }[]; footer: string }): number {
+    const PANEL_W = 620;
+    const titleY = 92;
+    const lineStartY = 128;
+    const lineStep = 26;
+    const footerY = lineStartY + portrait.lines.length * lineStep + 6;
+    const panelTop = 66;
+    const panelBottom = footerY + 26;
+
+    this.add
+      .rectangle(480, (panelTop + panelBottom) / 2, PANEL_W, panelBottom - panelTop, 0x12132e, 0.96)
+      .setStrokeStyle(2, 0x7ad8ff, 0.5);
+
+    this.add
+      .text(480, titleY, portrait.title, {
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: '18px',
+        color: '#cfe8ff',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5);
+
+    const leftX = 480 - PANEL_W / 2 + 28;
+    const rightX = 480 + PANEL_W / 2 - 28;
+    portrait.lines.forEach((line, i) => {
+      const y = lineStartY + i * lineStep;
+      this.add
+        .text(leftX, y, line.label, {
+          fontFamily: 'system-ui, sans-serif',
+          fontSize: '14px',
+          color: '#a8b0d8',
+        })
+        .setOrigin(0, 0.5);
+      this.add
+        .text(rightX, y, line.value, {
+          fontFamily: 'system-ui, sans-serif',
+          fontSize: '14px',
+          color: '#ffffff',
+        })
+        .setOrigin(1, 0.5);
+    });
+
+    this.add
+      .text(480, footerY, portrait.footer, {
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: '13px',
+        color: '#8a93c0',
+        fontStyle: 'italic',
+      })
+      .setOrigin(0.5);
+
+    return panelBottom + 42;
   }
 }

@@ -67,6 +67,9 @@ export function App() {
   const [puzzleTheme, setPuzzleTheme] = useState<PuzzleTheme>('default');
   const [talents, setTalents] = useState<TalentState>(() => loadTalents());
   const clientRef = useRef<PhoneNetClient | null>(null);
+  // When the current puzzle opened, so onSolved can report the solve duration
+  // (the `solveMs` wire field) that feeds the laptop's rhythm portrait (M10).
+  const puzzleStartRef = useRef<number>(0);
 
   const tuning = useMemo(() => tuningFor(talents.unlocked), [talents.unlocked]);
 
@@ -127,6 +130,9 @@ export function App() {
 
   const pickPower = useCallback(
     (power: PowerId) => {
+      // Stamp the solve-timer at the moment the player commits to a puzzle, so
+      // the duration reported on solve includes reading + working it.
+      puzzleStartRef.current = Date.now();
       setPhase((p) => (p.kind === 'spellbook' ? { kind: 'puzzle', roomCode: p.roomCode, power } : p));
     },
     []
@@ -155,7 +161,10 @@ export function App() {
       wasPuzzle = true;
       // Boost the cast if this power has a strength talent invested (M8).
       const boosted = strengthRef.current.has(p.power);
-      clientRef.current?.send({ type: 'puzzle-solved', powerId: p.power, boosted });
+      // Measured solve duration for the laptop's rhythm portrait (M10). Clamp to
+      // ≥0 in case the clock is odd; a missing start (0) yields a sane elapsed.
+      const solveMs = Math.max(0, Date.now() - puzzleStartRef.current);
+      clientRef.current?.send({ type: 'puzzle-solved', powerId: p.power, boosted, solveMs });
       return { kind: 'cast-feedback', roomCode: p.roomCode, power: p.power };
     });
     // Earn a stardust for the solve — but only for a genuine puzzle-phase solve,

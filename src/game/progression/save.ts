@@ -1,4 +1,5 @@
 import { PLANETS } from '../planets/registry';
+import type { PowerId } from '../../shared/protocol';
 
 /**
  * Pure, versioned, framework-free progression persistence.
@@ -9,15 +10,43 @@ import { PLANETS } from '../planets/registry';
  *
  * loadProgress/saveProgress NEVER throw — they guard `typeof window` and wrap
  * all storage access in try/catch, falling back to a sane default.
+ *
+ * SCHEMA v2 (M10) adds `telemetry`: a per-planet record of how THIS pair plays
+ * (the wedge of "The Planet That Knows You Two"). Upgrades from v1 are lossless
+ * via migrate() — a v1 save simply gains an empty telemetry map.
  */
 
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 export const STORAGE_KEY = 'constellation:progress';
+
+/**
+ * Per-power solve-rhythm for the PHONE player, accumulated across clears.
+ * `bestMs` is the single fastest solve seen; `totalMs / count` is the average.
+ */
+export type PowerSolveStat = { count: number; totalMs: number; bestMs: number };
+
+/**
+ * A portrait of how this pair cleared one planet, updated on EVERY clear (not
+ * just the first) so it tracks the relationship over time. `lastSolveMs` is the
+ * sum of the phone player's solve durations in the most recent clear; the
+ * laptop's "explore" time is derived as `lastClearMs - lastSolveMs`.
+ */
+export type PlanetTelemetry = {
+  attempts: number;       // clears recorded for this planet
+  lastClearMs: number;    // scene-clock elapsed of the most recent clear
+  bestClearMs: number;    // fastest clear seen
+  lastRespawns: number;   // astronaut deaths in the most recent clear
+  lastSolveMs: number;    // sum of phone solve durations in the most recent clear
+  solves: Partial<Record<PowerId, PowerSolveStat>>;
+};
+
+export type Telemetry = Record<string, PlanetTelemetry>;
 
 export type ProgressState = {
   schemaVersion: number;
   unlockedPlanets: string[];
   completed: Record<string, boolean>;
+  telemetry: Telemetry;
 };
 
 /** A fresh, sane default. Returns a NEW object every call (no shared refs). */
@@ -26,6 +55,7 @@ export function defaultProgress(): ProgressState {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     unlockedPlanets: ['planet-1'],
     completed: {},
+    telemetry: {},
   };
 }
 
@@ -69,7 +99,61 @@ function normalize(value: unknown): ProgressState {
     base.completed = completed;
   }
 
+  // Telemetry is v2+; a v1 blob simply has none, so this leaves base.telemetry
+  // at the default {}. A salvageable telemetry map is pulled forward, malformed
+  // entries dropped — never throws.
+  base.telemetry = normalizeTelemetry(v.telemetry);
+
   return base;
+}
+
+/** A finite, non-negative number, else the fallback. Coerces NaN/±Inf/garbage. */
+function safeNum(value: unknown, fallback = 0): number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : fallback;
+}
+
+/** Sanitize one planet's telemetry entry; returns null if unsalvageable. */
+function sanitizePlanetTelemetry(value: unknown): PlanetTelemetry | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const v = value as Record<string, unknown>;
+  const solves: Partial<Record<PowerId, PowerSolveStat>> = {};
+  if (typeof v.solves === 'object' && v.solves !== null) {
+    for (const [power, stat] of Object.entries(v.solves as Record<string, unknown>)) {
+      if (typeof stat !== 'object' || stat === null) continue;
+      const s = stat as Record<string, unknown>;
+      const count = safeNum(s.count);
+      if (count <= 0) continue;
+      solves[power as PowerId] = {
+        count,
+        totalMs: safeNum(s.totalMs),
+        bestMs: safeNum(s.bestMs),
+      };
+    }
+  }
+  return {
+    attempts: safeNum(v.attempts),
+    lastClearMs: safeNum(v.lastClearMs),
+    bestClearMs: safeNum(v.bestClearMs),
+    lastRespawns: safeNum(v.lastRespawns),
+    lastSolveMs: safeNum(v.lastSolveMs),
+    solves,
+  };
+}
+
+/**
+ * Coerce an arbitrary blob into a well-formed Telemetry map. Non-objects become
+ * {}; each entry is sanitized and dropped if unsalvageable. Pure, never throws —
+ * this is the load-path guard that keeps a corrupt telemetry blob from poisoning
+ * recordPlanetRun / the portrait.
+ */
+export function normalizeTelemetry(value: unknown): Telemetry {
+  if (typeof value !== 'object' || value === null) return {};
+  const out: Telemetry = {};
+  for (const [planetId, entry] of Object.entries(value as Record<string, unknown>)) {
+    const clean = sanitizePlanetTelemetry(entry);
+    if (clean) out[planetId] = clean;
+  }
+  return out;
 }
 
 /**
@@ -96,7 +180,11 @@ export function loadProgress(): ProgressState {
     const parsed: unknown = JSON.parse(raw);
     if (!isProgressShape(parsed)) return defaultProgress();
     if (parsed.schemaVersion !== CURRENT_SCHEMA_VERSION) return migrate(parsed);
-    return parsed;
+    // Current version: shape is trusted, but normalize() anyway so the same-
+    // version path salvages exactly like migrate (de-dupes unlockedPlanets,
+    // re-guarantees planet-1, drops non-boolean completed values, and sanitizes
+    // telemetry — which isn't part of isProgressShape). One consistent load path.
+    return normalize(parsed);
   } catch {
     return defaultProgress();
   }
@@ -147,4 +235,56 @@ export function markPlanetComplete(
     completed,
     unlockedPlanets: Array.from(unlocked),
   };
+}
+
+/** One cleared run of a planet, the raw input to recordPlanetRun. */
+export type PlanetRun = {
+  clearMs: number;                              // scene-clock elapsed, create→win
+  respawns: number;                             // astronaut deaths this run
+  solves: { power: PowerId; ms: number }[];     // phone solve durations, in cast order
+};
+
+/**
+ * Fold one cleared run into the per-planet telemetry. Called on EVERY clear so
+ * the portrait tracks the pair over time, not just the first visit.
+ *
+ * PURE: returns a NEW ProgressState; never mutates input (the prior per-power
+ * stat objects are read, never written — touched powers get fresh objects).
+ * All inputs are coerced non-negative so a bad timestamp can't corrupt the
+ * accumulators. Solo / no-phone runs simply carry an empty `solves` (lastSolveMs
+ * = 0), which the portrait reads as "no shared rhythm captured yet".
+ */
+export function recordPlanetRun(
+  state: ProgressState,
+  planetId: string,
+  run: PlanetRun,
+): ProgressState {
+  const prev = state.telemetry[planetId];
+  const clearMs = safeNum(run.clearMs);
+
+  const solves: Partial<Record<PowerId, PowerSolveStat>> = { ...(prev?.solves ?? {}) };
+  let runSolveMs = 0;
+  for (const { power, ms } of run.solves) {
+    const v = safeNum(ms, -1);
+    if (v < 0) continue; // drop NaN/negative timings rather than skew the average
+    runSolveMs += v;
+    const s = solves[power];
+    // Treat a 0 best as "no sample yet" so a corrupt-loaded 0 can't pin bestMs
+    // at 0 forever (Math.min(0, real) === 0).
+    solves[power] = s
+      ? { count: s.count + 1, totalMs: s.totalMs + v, bestMs: s.bestMs > 0 ? Math.min(s.bestMs, v) : v }
+      : { count: 1, totalMs: v, bestMs: v };
+  }
+
+  const entry: PlanetTelemetry = {
+    attempts: (prev?.attempts ?? 0) + 1,
+    lastClearMs: clearMs,
+    // Same 0-is-no-sample guard for the clear best (recovers after corrupt load).
+    bestClearMs: prev && prev.bestClearMs > 0 ? Math.min(prev.bestClearMs, clearMs) : clearMs,
+    lastRespawns: safeNum(run.respawns),
+    lastSolveMs: runSolveMs,
+    solves,
+  };
+
+  return { ...state, telemetry: { ...state.telemetry, [planetId]: entry } };
 }

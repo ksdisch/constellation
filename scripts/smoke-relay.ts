@@ -84,14 +84,15 @@ async function main(): Promise<void> {
     await gamePhoneJoined;
     console.log('✓ phone joined, game notified');
 
-    // 4. Boosted cast: phone → relay → game receives power-cast carrying boosted.
+    // 4. Boosted cast: phone → relay → game receives power-cast carrying boosted
+    //    AND the M10 solveMs telemetry field.
     const gameCast = next(game, (m) => m.type === 'power-cast', 'power-cast');
-    send(phone, { type: 'cast-power', powerId: 'freeze-stars', boosted: true });
-    const cast = (await gameCast) as { powerId: string; boosted?: boolean };
-    if (cast.powerId !== 'freeze-stars' || cast.boosted !== true) {
+    send(phone, { type: 'cast-power', powerId: 'freeze-stars', boosted: true, solveMs: 4200 });
+    const cast = (await gameCast) as { powerId: string; boosted?: boolean; solveMs?: number };
+    if (cast.powerId !== 'freeze-stars' || cast.boosted !== true || cast.solveMs !== 4200) {
       fail(`power-cast mismatch: ${JSON.stringify(cast)}`);
     }
-    console.log('✓ boosted cast round-trips (powerId + boosted preserved)');
+    console.log('✓ boosted cast round-trips (powerId + boosted + solveMs preserved)');
 
     // 5. planet-started: game → relay → phone, carrying the puzzle theme (M9).
     const phoneTheme = next(phone, (m) => m.type === 'planet-started', 'planet-started');
