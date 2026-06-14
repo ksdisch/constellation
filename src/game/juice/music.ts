@@ -15,6 +15,7 @@
  */
 
 import { webAudioCtor } from './audio';
+import { isMuted } from './mute';
 
 export type TrackName = 'hub' | 'planet';
 
@@ -219,6 +220,9 @@ function resolveSink(): MusicSink | null {
 export function startMusic(track: TrackName): void {
   if (track === currentTrack && sink?.playing) return;
   currentTrack = track;
+  // Record the active track regardless of audibility (like the SFX cue), then
+  // stay silent while muted (M11). Un-muting resumes it via applyMusicMute().
+  if (isMuted()) return;
   const s = resolveSink();
   if (!s) return;
   s.start(TRACKS[track]);
@@ -228,6 +232,25 @@ export function startMusic(track: TrackName): void {
 export function stopMusic(): void {
   currentTrack = null;
   sink?.stop();
+}
+
+/**
+ * Reconcile the live music loop with the current mute flag (M11). The SFX engine
+ * needs no equivalent — its cues are one-shot and consult the flag live — but a
+ * continuous music loop can't silence itself retroactively, so the scene toggle
+ * calls this right after flipping the flag:
+ *
+ *   - muted → STOP the loop (genuine silence + frees the lookahead scheduler).
+ *     `currentTrack` is preserved so un-muting can resume the right bed.
+ *   - un-muted → (re)start the active track. No-op when nothing is active yet.
+ */
+export function applyMusicMute(): void {
+  if (isMuted()) {
+    sink?.stop();
+  } else if (currentTrack) {
+    const s = resolveSink();
+    s?.start(TRACKS[currentTrack]);
+  }
 }
 
 /** The track currently playing (for the test bridge), or null when stopped. */

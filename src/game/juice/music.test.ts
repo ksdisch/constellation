@@ -3,6 +3,7 @@ import {
   TRACKS,
   startMusic,
   stopMusic,
+  applyMusicMute,
   getMusicTrack,
   getMusicState,
   resetMusic,
@@ -11,6 +12,7 @@ import {
   type TrackSpec,
   type MusicSink,
 } from './music';
+import { setMuted, resetMuted } from './mute';
 
 /**
  * Pure track-engine contract. No real WebAudio (jsdom has none); a mock sink
@@ -72,6 +74,7 @@ describe('TRACKS table', () => {
 describe('startMusic dispatch', () => {
   beforeEach(() => {
     resetMusic();
+    resetMuted();
   });
 
   it('records the active track even with no sink (jsdom has no WebAudio)', () => {
@@ -124,5 +127,48 @@ describe('startMusic dispatch', () => {
   it('reports unavailable state when no sink is set', () => {
     resetMusic();
     expect(getMusicState()).toBe('unavailable');
+  });
+
+  it('muted: records the active track but does NOT start the sink (M11)', () => {
+    const mock = new MockMusicSink();
+    setMusicSink(mock);
+    setMuted(true);
+    startMusic('planet');
+    expect(mock.started).toHaveLength(0); // silence
+    expect(getMusicTrack()).toBe('planet'); // …but the track is recorded
+  });
+
+  it('applyMusicMute stops the live loop when muted, preserving the track', () => {
+    const mock = new MockMusicSink();
+    setMusicSink(mock);
+    startMusic('planet');
+    expect(mock.playing).toBe(true);
+    setMuted(true);
+    applyMusicMute();
+    expect(mock.stopCount).toBe(1);
+    // currentTrack is preserved for resume, not cleared like stopMusic().
+    expect(getMusicTrack()).toBe('planet');
+  });
+
+  it('applyMusicMute resumes the active track when un-muted', () => {
+    const mock = new MockMusicSink();
+    setMusicSink(mock);
+    setMuted(true);
+    startMusic('hub'); // silent; records currentTrack='hub'
+    expect(mock.started).toHaveLength(0);
+    setMuted(false);
+    applyMusicMute();
+    expect(mock.started).toHaveLength(1);
+    expect(mock.started[0]).toEqual(TRACKS.hub);
+    expect(getMusicTrack()).toBe('hub');
+  });
+
+  it('applyMusicMute is a no-op when no track is active', () => {
+    const mock = new MockMusicSink();
+    setMusicSink(mock);
+    setMuted(false);
+    applyMusicMute(); // currentTrack is null after resetMusic
+    expect(mock.started).toHaveLength(0);
+    expect(mock.stopCount).toBe(0);
   });
 });

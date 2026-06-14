@@ -13,6 +13,8 @@
  * inject a mock sink and assert the table + dispatch with no real audio.
  */
 
+import { isMuted } from './mute';
+
 export type CueName =
   | 'jump'
   | 'freeze'
@@ -136,10 +138,13 @@ function resolveSink(): AudioSink | null {
 /**
  * Play a named cue. Records it as `lastCue` *regardless* of audibility, so the
  * test bridge can assert the cue was requested even when the audio context is
- * suspended (autoplay policy) or absent (jsdom).
+ * suspended (autoplay policy), absent (jsdom), or muted (M11). When muted we
+ * record the cue but skip the sink entirely — silence, with the bridge still
+ * proving the cast happened (the same "requested ≠ audible" split as autoplay).
  */
 export function playCue(name: CueName): void {
   lastCue = name;
+  if (isMuted()) return;
   const s = resolveSink();
   if (!s) return;
   s.resume();

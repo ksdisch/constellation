@@ -50,6 +50,11 @@ export type BridgeState = {
   // engine — same perceptual autoplay-resume caveat as audioState.
   musicTrack: string | null;
   musicState: string;
+  // Master-mute (M11). True when the in-game 🔊/🔇 toggle has silenced both the
+  // SFX and music engines. Muting keeps RECORDING cues/tracks (lastSfxCue /
+  // musicTrack still update) but produces silence — so a headless driver can
+  // prove a cast still fired while muted. Persisted across reload (own key).
+  muted: boolean;
   // Rhythm telemetry (M10) for the CURRENT planet, or null before any clear is
   // recorded. Lets a headless driver assert the portrait wedge: a clear bumps
   // `attempts` and records `lastClearMs` / per-power `solves`.
@@ -113,6 +118,7 @@ function zeroedState(): BridgeState {
     audioState: 'unavailable',
     musicTrack: null,
     musicState: 'unavailable',
+    muted: false,
     telemetry: null,
   };
 }

@@ -5,6 +5,7 @@ import { loadProgress } from '../progression/save';
 import { nodeStateFor } from '../progression/nodeStateFor';
 import { isTestMode, setBridgeProviders } from '../testBridge';
 import { startMusic } from '../juice/music';
+import { addMuteButton } from '../juice/muteButton';
 
 type Star = { x: number; y: number; r: number; alpha: number };
 
@@ -87,6 +88,10 @@ export class HubScene extends Phaser.Scene {
         color: '#a8b0d8',
       })
       .setOrigin(0.5);
+
+    // Master-mute toggle (M11), pinned top-right. The hub corner is otherwise
+    // empty, so no other HUD element needs to move.
+    addMuteButton(this, 948, 12);
 
     // Render one node per registry entry, mapped through nodeStateFor so the
     // chain lights up automatically as planets get completed. Reading from
