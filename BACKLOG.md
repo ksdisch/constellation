@@ -13,13 +13,6 @@ Pick items with the `project-backlog` skill in Claude Code.
 
 ## Open
 
-### [Exploration] The Planet That Knows You Two — a galaxy grown from your shared rhythm
-- **Why:** Grow each planet from a recorded portrait of how *this pair* plays (a generator emits the `PlanetConfig` + per-role difficulty from the dyad's solve-rhythm) so the galaxy becomes a keepsake of the relationship, not disposable hand-authored content. Bold bet that "this place is OURS" beats authored polish for an audience of two. See [`docs/ideas/planet-that-knows-you-two.md`](docs/ideas/planet-that-knows-you-two.md) for the full vision.
-- **Acceptance:** Prototype the credible first step — schema-v2 per-role solve telemetry behind `save.ts`'s `migrate()` seam + a read-only end-of-planet "portrait" card — and judge whether the portrait *feels true* (the precondition that earns trust for any generation). No procedural generation in this first cut.
-- **Size:** L
-- **Added:** 2026-06-07
-- **Note:** Surfaced by the `/moonshot` workflow (tethered run, boldness 5/5). Flips assumption ④ (hand-authored content); advances the open "session persistence" decision below; depends on the M2 "is it fun?" gate. Supersedes the accommodation half of [`docs/ideas/specialization.md`](docs/ideas/specialization.md).
-
 ### [Exploration] Playtest M2 with girlfriend — the "is it fun?" gate
 - **Why:** The plan explicitly names this as the critical gate before any M3 work. The whole asymmetric premise lives or dies here. If the loop doesn't feel fun, the power-to-puzzle pairing or the asymmetry itself may need to change before more code gets written.
 - **Acceptance:** Play one full session (handshake → spellbook → Quick Math → freeze → run past enemy → win). Write down: did the cast feel rewarding? Was the puzzle the right difficulty? Did the 3-second freeze feel tight or generous? Did the pairing feel meaningful or arbitrary?
@@ -41,6 +34,14 @@ _(nothing in flight)_
 ---
 
 ## Done
+
+### [Exploration] The Planet That Knows You Two — telemetry + portrait wedge (M10)
+- **Why:** The de-risked first step of the project's boldest vision ([`docs/ideas/planet-that-knows-you-two.md`](docs/ideas/planet-that-knows-you-two.md)): before *growing* planets from how a pair plays, close the telemetry gap and make the pair's solve-rhythm **something you can see**. Telemetry-first, generator-later — the portrait must prove itself before any generation is bet on it.
+- **Acceptance:** Schema-**v2** per-role solve telemetry behind `save.ts`'s `migrate()` seam + a new `solveMs` wire field, captured at planet clear (laptop) and on phone solve, surfaced as a read-only end-of-planet **"portrait" card** on the laptop win screen. Lossless migration, never-throws. No procedural generation in this cut.
+- **Size:** L (first cut landed ~M)
+- **Added:** 2026-06-07
+- **Completed:** 2026-06-14
+- **Note:** Built by the `/autonomous-milestone` workflow. **Schema v2** adds a `telemetry: Record<planetId, PlanetTelemetry>` field (per-planet `attempts`/`lastClearMs`/`bestClearMs`/`lastRespawns`/`lastSolveMs` + per-power `{count,totalMs,bestMs}` solve stats); `migrate()` upgrades v1 saves losslessly (empty telemetry) and a new `normalizeTelemetry()` sanitizes any corrupt blob on **both** load paths (so a bad save can never throw or poison the portrait). New pure `recordPlanetRun()` folds one clear into telemetry (every clear, not just the first, so the portrait accretes). New pure `src/game/progression/portrait.ts` (`buildPortrait` + `formatDuration`) — the signature line is the **explore-vs-solve split** (`lastClearMs − lastSolveMs`), shown only when a phone contributed solves; a solo clear degrades to a "connect a phone" invitation. The wire: `solveMs?` rides `cast-power`/`puzzle-solved`/`power-cast` like `boosted` did — the phone measures it (pickPower→onSolved), the relay carries it through the rename (one `relayForward` line, no game logic), the game buffers it per-run and records it at `showWin()`, which renders the card. **Recorded-only** — no gameplay branches on `solveMs`, so an un-instrumented/solo cast is byte-identical. Gated on `typecheck` + `build` + **139 Vitest** (new `save.test.ts` v2/migrate/recordPlanetRun cases + `portrait.test.ts` + a relay `solveMs` case) + `smoke:relay` extended to round-trip `solveMs` over a live socket. **Live-verified** via the Playwright MCP: a `?solo=1&test=1` planet-1 clear records telemetry (`attempts`/`lastClearMs`/`lastRespawns`, `lastSolveMs:0`) and renders the solo portrait; a **two-client** run (game + phone over the real relay) had the phone solve QuickMath → the measured `solveMs` (876ms) crossed the wire into `telemetry.solves['freeze-stars']` and the portrait rendered the full per-role split, with `bestClearMs` correctly keeping the min across clears. Adversarial multi-agent review (3 lenses → adversarial verify): the one MED finding was refuted; 3 LOW findings folded in (consistent same-version load sanitization; `best`-stuck-at-0 recovery guard; portrait best-suffix compares rendered strings). **Deliberate cuts:** no procedural generation (the whole point of the wedge — earn trust first); portrait lives on the laptop (the shared screen), phone keeps only its stardust toast; the "does it *feel* true" judgment still needs you + partner (a build can't self-verify that). Plan: [`docs/plans/m10-rhythm-portrait.md`](docs/plans/m10-rhythm-portrait.md).
 
 ### [Feature] Themed puzzle variants — per-planet puzzle reskins (M9)
 - **Why:** Closes the Planet-2 "snowflake-symbol math" follow-up (noted in the Planet 2 entry below). Until now every phone puzzle looked identical regardless of which planet the laptop was on — the phone had zero planet awareness.

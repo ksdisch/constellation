@@ -31,6 +31,15 @@ describe('relayForward', () => {
     });
   });
 
+  it('carries the M10 solveMs telemetry field through the rename', () => {
+    expect(relayForward({ type: 'puzzle-solved', powerId: 'freeze-stars', boosted: true, solveMs: 4200 })).toEqual({
+      type: 'power-cast',
+      powerId: 'freeze-stars',
+      boosted: true,
+      solveMs: 4200,
+    });
+  });
+
   it('forwards planet-complete unchanged', () => {
     expect(relayForward({ type: 'planet-complete' })).toEqual({ type: 'planet-complete' });
   });

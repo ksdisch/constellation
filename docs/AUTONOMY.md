@@ -33,9 +33,22 @@ http://<host>:5180/?solo=1&test=1
 
 `BridgeState = { sceneKey, won, enemyFrozen, astronautX, astronautY, respawnCount, platformCount,
 darkZonePresent, phaseActive, lastCastPower, lastCastBoosted, unlockedPlanets: string[],
-completed: Record<string, boolean>, lastSfxCue, shakeActive, lastBurst, audioState, musicTrack, musicState }`.
+completed: Record<string, boolean>, lastSfxCue, shakeActive, lastBurst, audioState, musicTrack, musicState,
+telemetry: PlanetTelemetry | null }`.
 `phaseActive` is `true` while a Phase Dash window is open (the astronaut is immune to the hazard lane).
-`unlockedPlanets`/`completed` are read fresh from `loadProgress()` (localStorage) on every call.
+`unlockedPlanets`/`completed`/`telemetry` are read fresh from `loadProgress()` (localStorage) on every call.
+
+### Rhythm telemetry (M10)
+
+`telemetry` is the current planet's `PlanetTelemetry` (or `null` before any recorded clear): `{ attempts,
+lastClearMs, bestClearMs, lastRespawns, lastSolveMs, solves: Record<PowerId, {count,totalMs,bestMs}> }`. It
+makes the "rhythm portrait" wedge assertable. A clear bumps `attempts`, records `lastClearMs`
+(scene-clock elapsed), and — for a **two-client** run where the phone solved a puzzle — folds the phone's
+measured `solveMs` into `solves[power]` and `lastSolveMs`. Verified live: a `?solo=1&test=1` planet-1 clear
+records `lastSolveMs:0` + empty `solves` (the portrait shows the solo "connect a phone" degrade); a
+two-client run (phone solves QuickMath) lands `solves['freeze-stars'].count===1` with `lastSolveMs>0`, and
+`bestClearMs` keeps the min across clears. `solveMs` is **recorded-only** — no gameplay branches on it
+(proven over a live socket by `npm run smoke:relay`), so an un-instrumented/solo cast is byte-identical.
 
 ### Strength-talent coupling (M8)
 

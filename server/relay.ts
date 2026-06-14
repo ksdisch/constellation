@@ -7,12 +7,13 @@ import type { ClientToServerMsg, ServerToClientMsg } from '../src/shared/protoco
  * The relay is a DUMB forwarder — it adds no game logic. Its only jobs are an
  * allowlist (room-setup messages are handled separately in the connection
  * handler and never reach here) plus the historical `cast-power → power-cast`
- * rename. The optional `boosted` flag (M8) is passed straight through; the relay
- * never reads or decides it. Returns null for anything not peer-forwarded.
+ * rename. The optional `boosted` (M8) and `solveMs` (M10) flags are passed
+ * straight through; the relay never reads or decides them. Returns null for
+ * anything not peer-forwarded.
  */
 export function relayForward(msg: ClientToServerMsg): ServerToClientMsg | null {
   if (msg.type === 'cast-power' || msg.type === 'puzzle-solved') {
-    return { type: 'power-cast', powerId: msg.powerId, boosted: msg.boosted };
+    return { type: 'power-cast', powerId: msg.powerId, boosted: msg.boosted, solveMs: msg.solveMs };
   }
   if (msg.type === 'planet-complete') {
     return { type: 'planet-complete' };

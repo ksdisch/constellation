@@ -1,4 +1,5 @@
 import type { PowerId } from '../shared/protocol';
+import type { PlanetTelemetry } from './progression/save';
 
 /**
  * Flag-gated test bridge.
@@ -49,6 +50,10 @@ export type BridgeState = {
   // engine — same perceptual autoplay-resume caveat as audioState.
   musicTrack: string | null;
   musicState: string;
+  // Rhythm telemetry (M10) for the CURRENT planet, or null before any clear is
+  // recorded. Lets a headless driver assert the portrait wedge: a clear bumps
+  // `attempts` and records `lastClearMs` / per-power `solves`.
+  telemetry: PlanetTelemetry | null;
 };
 
 /** The object exposed on `window.__constellation` when `?test=1`. */
@@ -108,6 +113,7 @@ function zeroedState(): BridgeState {
     audioState: 'unavailable',
     musicTrack: null,
     musicState: 'unavailable',
+    telemetry: null,
   };
 }
 
