@@ -89,9 +89,10 @@ export class HubScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    // Master-mute toggle (M11), pinned top-right. The hub corner is otherwise
+    // Master-mute toggle (M11), pinned top-right at the SAME (948, 8) as Planet
+    // (one documented click target for both scenes). The hub corner is otherwise
     // empty, so no other HUD element needs to move.
-    addMuteButton(this, 948, 12);
+    addMuteButton(this, 948, 8);
 
     // Render one node per registry entry, mapped through nodeStateFor so the
     // chain lights up automatically as planets get completed. Reading from

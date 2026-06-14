@@ -94,11 +94,15 @@ un-muting resumes the right bed). So a headless driver can prove a cast *fired w
 
 To verify the toggle live, **use a real mouse click** — `page.mouse.click(x, y)` on the chip's screen
 position (canvas is `ScaleManager.NONE`, so 1 canvas px == 1 game px; the chip's top-right is at game
-`(948, 8)` on Hub / Planet). Synthetic `dispatchEvent(new PointerEvent(...))` does **not** work: Phaser
-reads `event.pageX/pageY`, which aren't settable through the `PointerEvent` constructor, so it hit-tests at
-the wrong spot (the same synthetic-event flake the "Known sharp edges" section warns about). Then poll the
-bridge for `muted` to flip, `localStorage['constellation:settings']` to persist, and — across a hard reload
-— `muted` to come back `true` from `Boot`. The flag/persistence/silence units are Vitest-asserted in
+`(948, 8)` on both Hub and Planet, so screen `(rect.left + 948 − chipWidth/2, rect.top + ~34)`). Synthetic
+`dispatchEvent(new PointerEvent(...))` does **not** work: Phaser reads `event.pageX/pageY`, which aren't
+settable through the `PointerEvent` constructor, so it hit-tests at the wrong spot (the same synthetic-event
+flake the "Known sharp edges" section warns about). **Do the in-session `muted` poll on a Planet** — only
+`PlanetScene` wires a live `getState`, so on the Hub the bridge returns the zeroed default (`muted` always
+reads `false` there regardless of the real flag — see "Known sharp edges"). After clicking on a Planet,
+poll the bridge for `muted` to flip; assert `localStorage['constellation:settings']` persists (this also
+works on the Hub, where it's the *only* observable signal); and — across a hard reload — read `muted` back
+`true` from `Boot` (again on a Planet). The flag/persistence/silence units are Vitest-asserted in
 `src/game/juice/{mute,settings,audio,music}.test.ts`.
 
 ## Load-bearing semantics (important for honest negative tests)
