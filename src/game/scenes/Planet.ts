@@ -11,6 +11,8 @@ import { isTestMode, setBridgeProviders } from '../testBridge';
 import { JuiceController } from '../juice/effects';
 import { getLastCue, getAudioState, resetLastCue } from '../juice/audio';
 import { startMusic, getMusicTrack, getMusicState } from '../juice/music';
+import { isMuted } from '../juice/mute';
+import { addMuteButton } from '../juice/muteButton';
 
 const FREEZE_DURATION_MS = 3000;
 const PLATFORM_LIFETIME_MS = 5000;
@@ -175,8 +177,12 @@ export class PlanetScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setScrollFactor(0);
 
+    // Pinned top-right master-mute toggle (M11). Sits in the corner; the phone-
+    // link indicator is shifted left below to keep clear of its hit area.
+    addMuteButton(this, 948, 8);
+
     const linkIndicator = this.add
-      .text(950, 14, '● phone linked', {
+      .text(872, 16, '● phone linked', {
         fontFamily: 'system-ui, sans-serif',
         fontSize: '12px',
         color: '#98ffc8',
@@ -314,6 +320,7 @@ export class PlanetScene extends Phaser.Scene {
             audioState: getAudioState(),
             musicTrack: getMusicTrack(),
             musicState: getMusicState(),
+            muted: isMuted(),
             telemetry: progress.telemetry[this.config.id] ?? null,
           };
         },

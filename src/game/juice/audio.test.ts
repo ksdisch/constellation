@@ -11,6 +11,7 @@ import {
   type CueSpec,
   type AudioSink,
 } from './audio';
+import { setMuted, resetMuted } from './mute';
 
 /**
  * Pure cue-engine contract. No real WebAudio (jsdom has none); a mock sink
@@ -68,6 +69,7 @@ describe('CUES table', () => {
 describe('playCue dispatch', () => {
   beforeEach(() => {
     resetAudio();
+    resetMuted();
   });
 
   it('records the last cue even with no sink (jsdom has no WebAudio)', () => {
@@ -111,5 +113,29 @@ describe('playCue dispatch', () => {
     // …and the next cue still routes to the same sink.
     playCue('jump');
     expect(mock.played).toHaveLength(2);
+  });
+
+  it('muted: records the cue but routes NOTHING to the sink (silence, M11)', () => {
+    const mock = new MockSink();
+    setAudioSink(mock);
+    setMuted(true);
+    playCue('freeze');
+    // The cue is still recorded (the bridge can prove the cast happened)…
+    expect(getLastCue()).toBe('freeze');
+    // …but the sink saw nothing — no play, and not even a resume.
+    expect(mock.played).toHaveLength(0);
+    expect(mock.resumeCount).toBe(0);
+  });
+
+  it('un-muting resumes playback on the next cue', () => {
+    const mock = new MockSink();
+    setAudioSink(mock);
+    setMuted(true);
+    playCue('jump');
+    expect(mock.played).toHaveLength(0);
+    setMuted(false);
+    playCue('jump');
+    expect(mock.played).toHaveLength(1);
+    expect(getLastCue()).toBe('jump');
   });
 });

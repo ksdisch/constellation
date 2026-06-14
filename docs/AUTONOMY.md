@@ -34,7 +34,7 @@ http://<host>:5180/?solo=1&test=1
 `BridgeState = { sceneKey, won, enemyFrozen, astronautX, astronautY, respawnCount, platformCount,
 darkZonePresent, phaseActive, lastCastPower, lastCastBoosted, unlockedPlanets: string[],
 completed: Record<string, boolean>, lastSfxCue, shakeActive, lastBurst, audioState, musicTrack, musicState,
-telemetry: PlanetTelemetry | null }`.
+muted: boolean, telemetry: PlanetTelemetry | null }`.
 `phaseActive` is `true` while a Phase Dash window is open (the astronaut is immune to the hazard lane).
 `unlockedPlanets`/`completed`/`telemetry` are read fresh from `loadProgress()` (localStorage) on every call.
 
@@ -80,6 +80,30 @@ proves whether the context actually resumed — but whether a human *hears* it d
 autoplay-resume gesture. So assert `lastSfxCue` flips on cast and (optionally) that `audioState` reaches
 `'running'`; do **not** treat silence as a failure. The pure cue/effect tables are Vitest-asserted in
 `src/game/juice/*.test.ts`.
+
+### Master-mute (M11)
+
+| Field | Type | Notes |
+|---|---|---|
+| `muted` | `boolean` | True when the in-game 🔊/🔇 toggle (top-right on Hub + Planet) has silenced **both** engines. Persisted across reload via `constellation:settings` (a never-throws twin of the progress save) and re-applied in `Boot.create()` before any scene plays audio. |
+
+Mute is the deliberate counterpart of the "requested ≠ audible" split: while `muted`, `playCue` still
+records `lastSfxCue` and `startMusic` still records `musicTrack`, but **no sound is produced** — SFX skip
+the sink, and the music loop is stopped (its lookahead scheduler torn down; `currentTrack` is preserved so
+un-muting resumes the right bed). So a headless driver can prove a cast *fired while muted*.
+
+To verify the toggle live, **use a real mouse click** — `page.mouse.click(x, y)` on the chip's screen
+position (canvas is `ScaleManager.NONE`, so 1 canvas px == 1 game px; the chip's top-right is at game
+`(948, 8)` on both Hub and Planet, so screen `(rect.left + 948 − chipWidth/2, rect.top + ~34)`). Synthetic
+`dispatchEvent(new PointerEvent(...))` does **not** work: Phaser reads `event.pageX/pageY`, which aren't
+settable through the `PointerEvent` constructor, so it hit-tests at the wrong spot (the same synthetic-event
+flake the "Known sharp edges" section warns about). **Do the in-session `muted` poll on a Planet** — only
+`PlanetScene` wires a live `getState`, so on the Hub the bridge returns the zeroed default (`muted` always
+reads `false` there regardless of the real flag — see "Known sharp edges"). After clicking on a Planet,
+poll the bridge for `muted` to flip; assert `localStorage['constellation:settings']` persists (this also
+works on the Hub, where it's the *only* observable signal); and — across a hard reload — read `muted` back
+`true` from `Boot` (again on a Planet). The flag/persistence/silence units are Vitest-asserted in
+`src/game/juice/{mute,settings,audio,music}.test.ts`.
 
 ## Load-bearing semantics (important for honest negative tests)
 

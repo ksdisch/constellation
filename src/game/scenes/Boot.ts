@@ -3,6 +3,8 @@ import { GameNetClient } from '../net/client';
 import { loadProgress } from '../progression/save';
 import { PLANETS } from '../planets/registry';
 import { ensureBridge } from '../testBridge';
+import { setMuted } from '../juice/mute';
+import { loadSettings } from '../juice/settings';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -13,6 +15,11 @@ export class BootScene extends Phaser.Scene {
     // Install the flag-gated test bridge (no-op unless ?test=1). Runs for both
     // solo and normal entry, before any scene that wires providers into it.
     ensureBridge();
+
+    // Apply the persisted master-mute (M11) BEFORE any scene plays audio. Both
+    // engines read the flag live on their first playCue/startMusic, and the
+    // first audio is Hub.create()→startMusic('hub'), which runs after this.
+    setMuted(loadSettings().muted);
 
     this.makeSolidTexture('astronaut', 32, 48, 0xffd166);
     this.makeSolidTexture('ground', 64, 40, 0x4a5888);
