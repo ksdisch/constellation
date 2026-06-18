@@ -107,3 +107,7 @@ Repo-local Claude Code slash commands (`.claude/commands/`) and skills (`.claude
 - `playwright` — project-pinned browser driver (run via `npx @playwright/mcp@latest`, so nothing lands in `package.json`). Makes the `?test=1` headless-bridge playbook (`docs/AUTONOMY.md`) reproducible in cloud sessions / for collaborators; tools surface as `mcp__playwright__*`. Drives `/verify-planet`.
 
 To vendor more of your global commands/skills or brainstorm new repo-specific automations, run `/claudify-repo`.
+
+## Operating Constraints
+
+@.claude/operating-constraints.md
