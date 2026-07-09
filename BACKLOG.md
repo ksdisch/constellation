@@ -13,6 +13,12 @@ Pick items with the `project-backlog` skill in Claude Code.
 
 ## Open
 
+### [Improvement] Hardening pass — fix the 2026-07-09 audit findings
+- **Why:** A full-project audit ([`docs/AUDIT-2026-07-09.md`](docs/AUDIT-2026-07-09.md)) found two remotely triggerable relay crashes, disconnect-blindness on both clients (the couch-playtest killer), two bugs that undermine shipped features (freeze re-cast truncates the freeze; **every particle burst renders off-screen**), a protocol-guard hook that auto-approves the edits it should guard, and onboarding docs stuck at M2/M4 that misdirect every fresh session.
+- **Acceptance:** Phases 0–5 of the audit's fix plan landed with their per-phase gates green (phase 6 rides the actual public deploy). Findings F-01…F-59 closed or explicitly deferred with a note.
+- **Size:** L (≈5–7 focused days across 6 independently shippable phases)
+- **Added:** 2026-07-09
+
 ### [Exploration] Playtest M2 with girlfriend — the "is it fun?" gate
 - **Why:** The plan explicitly names this as the critical gate before any M3 work. The whole asymmetric premise lives or dies here. If the loop doesn't feel fun, the power-to-puzzle pairing or the asymmetry itself may need to change before more code gets written.
 - **Acceptance:** Play one full session (handshake → spellbook → Quick Math → freeze → run past enemy → win). Write down: did the cast feel rewarding? Was the puzzle the right difficulty? Did the 3-second freeze feel tight or generous? Did the pairing feel meaningful or arbitrary?
