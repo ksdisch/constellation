@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { GameNetClient } from '../net/client';
 import { PLANETS, type PlanetRegistryEntry } from '../planets/registry';
+import { deriveProfile, generatePlanet } from '../planets/generate';
 import { loadProgress } from '../progression/save';
 import { nodeStateFor } from '../progression/nodeStateFor';
 import { isTestMode, setBridgeProviders } from '../testBridge';
@@ -111,8 +112,16 @@ export class HubScene extends Phaser.Scene {
       this.renderNode(entry, index, nodeStateFor(progress, entry.id));
     });
 
+    // "Grow a planet" — the generator spike ("The Planet That Knows You Two").
+    // Distinct from the authored nodes: it is NOT a registry entry and NOT a
+    // progression node, so it sits on its own row below and reads as an experiment
+    // (warm gold vs. the cyan authored chain). Clicking it derives a config from
+    // THIS pair's recorded telemetry and launches it.
+    this.renderGrowNode();
+
     // Test-bridge navigation (no-op unless ?test=1): launch a planet by id,
-    // mirroring the node-click launch contract for entries that have a config.
+    // mirroring the node-click launch contract for entries that have a config;
+    // plus startGeneratedPlanet() so a headless driver can clear a grown planet.
     if (isTestMode()) {
       setBridgeProviders({
         startPlanet: (id) => {
@@ -126,8 +135,46 @@ export class HubScene extends Phaser.Scene {
             });
           }
         },
+        startGeneratedPlanet: () => this.launchGeneratedPlanet(),
       });
     }
+  }
+
+  /**
+   * Grow a PlanetConfig from this pair's recorded rhythm and launch it. Reads the
+   * same persisted telemetry the portrait card is built from; an empty/solo save
+   * degrades to a neutral default planet (deriveProfile never throws). Launches
+   * via scene-data — Planet.init takes a raw config, so no registry mutation.
+   */
+  private launchGeneratedPlanet() {
+    const config = generatePlanet(deriveProfile(loadProgress().telemetry));
+    this.scene.start('Planet', {
+      net: this.net,
+      config,
+      solo: this.solo,
+      unlockedPlanets: new Set(this.unlockedPlanets),
+    });
+  }
+
+  /** The warm-gold "Grow a planet" experiment node, centered below the chain. */
+  private renderGrowNode() {
+    const node = this.add.circle(480, 418, 34, 0xffd27a);
+    node.setInteractive({ useHandCursor: true });
+    node.on('pointerdown', () => this.launchGeneratedPlanet());
+    this.add
+      .text(480, 460, '✦ Grow a planet', {
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: '16px',
+        color: '#ffd27a',
+      })
+      .setOrigin(0.5);
+    this.add
+      .text(480, 482, 'from how you two play', {
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: '12px',
+        color: '#a8b0d8',
+      })
+      .setOrigin(0.5);
   }
 
   /** Even horizontal spread across the canvas for N nodes. */
