@@ -1,5 +1,6 @@
 import type { PlanetConfig } from './planet1';
 import type { Telemetry } from '../progression/save';
+import { GENERATED_THEMES } from './generatedThemes';
 
 /**
  * The generator spike for "The Planet That Knows You Two".
@@ -22,9 +23,13 @@ import type { Telemetry } from '../progression/save';
  * `mulberry32` PRNG folded from the telemetry, so the same pair always grows the
  * same planet and two different pairs visibly differ.
  *
- * Scope (spike): themeless (default textures, zero Boot churn) and modeled on the
- * planet-3 gate template (Freeze corridor -> Phase Dash curtain -> Illuminate
- * finale). Theme selection + a library of templates are noted follow-ups.
+ * Scope: modeled on the planet-3 gate template (Freeze corridor -> Phase Dash
+ * curtain -> Illuminate finale); a library of gate templates is still a follow-up.
+ * A grown planet now also wears a THEME: `generatePlanet` deterministically picks
+ * one from `GENERATED_THEMES` (whose textures `Boot` pre-bakes) and stamps the
+ * matching `id`/`theme`/`puzzleTheme`, so it looks like a real planet and two
+ * pairs grow visibly different worlds. The theme is cosmetic — it never touches
+ * the reach-budget geometry, so the safety proof is unaffected.
  */
 
 // ── Shared reach budget (matches Astronaut.ts + the hand-authored planets) ──────
@@ -226,11 +231,17 @@ export function generatePlanet(profile: RhythmProfile, id = 'planet-generated'):
     clamp((hazardX + hiddenPlatformX) / 2 + jitter(rand, 12), hazardX + 70, hiddenPlatformX - 70),
   );
 
-  const name = NAMES[Math.floor(rand() * NAMES.length) % NAMES.length];
+  const baseName = NAMES[Math.floor(rand() * NAMES.length) % NAMES.length];
+
+  // Cosmetic theme pick — a grown planet looks like a real planet, not the default
+  // skin. `Boot` pre-bakes `<key>-planet-generated-<slug>` textures for each entry,
+  // so `id` MUST carry the slug for `Planet.tex()` to resolve them. Purely visual:
+  // no reach-budget geometry depends on it, so the safety sweep is unaffected.
+  const gt = GENERATED_THEMES[Math.floor(rand() * GENERATED_THEMES.length) % GENERATED_THEMES.length];
 
   return {
-    id,
-    name,
+    id: `${id}-${gt.slug}`,
+    name: `${baseName} · ${gt.label}`,
     hint: 'Chill the sentry, phase through the plasma curtain, then illuminate the hidden ledge.',
     spawn: { x: 64, y: 440 },
     goal: { x: goalX, y: GOAL_Y },
@@ -242,5 +253,7 @@ export function generatePlanet(profile: RhythmProfile, id = 'planet-generated'):
     darkZone: { x: hiddenPlatformX, y: HIDDEN_PLATFORM_Y, width: 150, height: 120 },
     fallRespawnY: 600,
     hazardLane: { x: hazardX, y: HAZARD_Y, width: hazardWidth, height: HAZARD_HEIGHT },
+    theme: gt.theme,
+    puzzleTheme: gt.puzzleTheme,
   };
 }
