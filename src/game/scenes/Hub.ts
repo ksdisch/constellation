@@ -4,7 +4,7 @@ import { PLANETS, type PlanetRegistryEntry } from '../planets/registry';
 import { loadProgress } from '../progression/save';
 import { nodeStateFor } from '../progression/nodeStateFor';
 import { isTestMode, setBridgeProviders } from '../testBridge';
-import { startMusic } from '../juice/music';
+import { resumeMusic, startMusic } from '../juice/music';
 import { addMuteButton } from '../juice/muteButton';
 
 type Star = { x: number; y: number; r: number; alpha: number };
@@ -64,6 +64,12 @@ export class HubScene extends Phaser.Scene {
     // Airy ambient bed for the hub (distinct from the in-level track). Idempotent
     // and self-switching, so returning from a planet swaps tracks seamlessly.
     startMusic('hub');
+
+    // On a first visit the line above runs with no user gesture in the call
+    // stack, so the AudioContext can sit 'suspended' — a silent hub (F-40).
+    // The first tap anywhere un-suspends it; `once` self-removes, and later
+    // visits re-registering is a harmless no-op poke at a running context.
+    this.input.once('pointerdown', () => resumeMusic());
 
     // Starry background — hand-placed dots for a consistent look run-to-run.
     for (const star of STARS) {
