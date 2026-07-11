@@ -117,7 +117,7 @@ export function TapSequence({
     }
   }
 
-  const timeColor = secondsLeft <= 5 ? '#ff9090' : '#a8b0d8';
+  const timeColor = secondsLeft <= 5 ? '#ff6b9d' : '#a8b0d8';
   const statusLabel =
     mode === 'input' ? `${inputProgress}/${sequence.length}` : mode === 'fail' ? 'miss' : 'watch';
 
@@ -143,7 +143,7 @@ export function TapSequence({
         <span style={{ opacity: 0.6, color: pal.glyph ? pal.accent : undefined }}>
           {pal.glyph && `${pal.glyph} `}Summon Platform · {statusLabel}
         </span>
-        <span style={{ color: timeColor }}>⏱ {secondsLeft}s</span>
+        <span aria-live={secondsLeft <= 5 ? 'polite' : 'off'} style={{ color: timeColor }}>⏱ {secondsLeft}s</span>
       </div>
 
       <div
@@ -196,11 +196,13 @@ export function TapSequence({
         onClick={onCancel}
         style={{
           fontSize: '14px',
-          padding: '10px',
+          padding: '10px 20px',
+          minHeight: '44px',
           borderRadius: '8px',
           border: 'none',
           background: 'transparent',
-          color: '#667',
+          color: '#fff',
+          opacity: 0.6,
           cursor: 'pointer',
         }}
       >

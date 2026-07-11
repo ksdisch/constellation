@@ -21,6 +21,11 @@ import type { PowerId, PuzzleTheme } from '../shared/protocol';
 /** Bonus stardust the phone earns when the laptop clears a planet (M8). */
 const PLANET_BONUS = 3;
 
+// Small-viewport height that tracks mobile browser chrome (F-52): dvh where
+// the engine supports it, vh as the fallback for older mobile Safari.
+const MIN_VIEWPORT_HEIGHT =
+  typeof CSS !== 'undefined' && CSS.supports('min-height', '100dvh') ? '100dvh' : '100vh';
+
 const FEEDBACK: Record<PowerId, { title: string; color: string; sub: string }> = {
   'freeze-stars': { title: 'Cast!', color: '#7ad8ff', sub: 'Freeze Stars — enemies cold for 3s.' },
   'summon-platform': { title: 'Cast!', color: '#9a7aff', sub: 'Platform — bridge holds for 5s.' },
@@ -217,7 +222,7 @@ export function App() {
   return (
     <div
       style={{
-        minHeight: '100vh',
+        minHeight: MIN_VIEWPORT_HEIGHT,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -248,6 +253,8 @@ export function App() {
 function BonusToast({ amount }: { amount: number }) {
   return (
     <div
+      role="status"
+      aria-live="polite"
       style={{
         position: 'fixed',
         top: '24px',
@@ -292,9 +299,9 @@ function renderPhase(
         {actions.error && (
           <div
             style={{
-              background: '#3a1e28',
-              border: '1px solid #7a3a4a',
-              color: '#ffd3dc',
+              background: '#1a1b3a',
+              border: '1px solid #ff6b9d',
+              color: '#ff6b9d',
               padding: '12px',
               borderRadius: '8px',
               marginBottom: '16px',

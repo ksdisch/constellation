@@ -80,7 +80,7 @@ export function QuickMath({ onSolved, onCancel, totalSeconds = QUICK_MATH_TOTAL_
     }
   }
 
-  const timeColor = secondsLeft <= 5 ? '#ff9090' : '#a8b0d8';
+  const timeColor = secondsLeft <= 5 ? '#ff6b9d' : '#a8b0d8';
 
   return (
     <div
@@ -104,7 +104,7 @@ export function QuickMath({ onSolved, onCancel, totalSeconds = QUICK_MATH_TOTAL_
         <span style={{ opacity: 0.6, color: pal.glyph ? pal.accent : undefined }}>
           {pal.glyph && `${pal.glyph} `}Freeze Stars · {idx + 1}/{problems.length}
         </span>
-        <span style={{ color: timeColor }}>⏱ {secondsLeft}s</span>
+        <span aria-live={secondsLeft <= 5 ? 'polite' : 'off'} style={{ color: timeColor }}>⏱ {secondsLeft}s</span>
       </div>
 
       <div style={{ fontSize: '64px', fontWeight: 700, margin: '12px 0', letterSpacing: '4px', color: pal.glyph ? pal.glow : undefined }}>
@@ -141,7 +141,8 @@ export function QuickMath({ onSolved, onCancel, totalSeconds = QUICK_MATH_TOTAL_
             borderRadius: '12px',
             border: 'none',
             background: input.trim() === '' ? '#334' : '#7ad8ff',
-            color: input.trim() === '' ? '#667' : '#001a2a',
+            color: input.trim() === '' ? '#fff' : '#001a2a',
+            opacity: input.trim() === '' ? 0.6 : 1,
             fontWeight: 700,
             cursor: input.trim() === '' ? 'not-allowed' : 'pointer',
           }}
@@ -153,11 +154,13 @@ export function QuickMath({ onSolved, onCancel, totalSeconds = QUICK_MATH_TOTAL_
           onClick={onCancel}
           style={{
             fontSize: '14px',
-            padding: '10px',
+            padding: '10px 20px',
+            minHeight: '44px',
             borderRadius: '8px',
             border: 'none',
             background: 'transparent',
-            color: '#667',
+            color: '#fff',
+            opacity: 0.6,
             cursor: 'pointer',
           }}
         >

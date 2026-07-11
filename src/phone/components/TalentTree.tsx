@@ -163,7 +163,7 @@ function TalentStar({ node, accent, owned, affordable, onUnlock }: StarProps) {
       onPointerUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
       onPointerLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
     >
-      <span style={{ fontSize: '20px', color: owned ? accent : '#556', lineHeight: 1 }}>
+      <span style={{ fontSize: '20px', color: owned ? accent : '#fff', opacity: owned ? 1 : 0.6, lineHeight: 1 }}>
         {owned ? '★' : '☆'}
       </span>
       <span style={{ display: 'flex', flexDirection: 'column', gap: '3px', flex: 1 }}>
@@ -179,7 +179,8 @@ function TalentStar({ node, accent, owned, affordable, onUnlock }: StarProps) {
         style={{
           fontSize: '13px',
           fontWeight: 700,
-          color: owned ? accent : interactive ? '#ffd166' : '#667',
+          color: owned ? accent : interactive ? '#ffd166' : '#fff',
+          opacity: owned || interactive ? 1 : 0.6,
           whiteSpace: 'nowrap',
         }}
       >
