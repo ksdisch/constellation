@@ -24,12 +24,23 @@ export class GameNetClient {
       this.send({ type: 'create-room', role: 'game' });
     });
     ws.addEventListener('message', (e) => {
+      let msg: ServerToClientMsg;
       try {
-        const msg = JSON.parse(e.data as string) as ServerToClientMsg;
-        this.handlers.forEach((h) => h(msg));
+        msg = JSON.parse(e.data as string) as ServerToClientMsg;
       } catch (err) {
         console.error('bad message', err);
+        return;
       }
+      // Isolate handlers from each other: with one shared try, a stale scene
+      // handler throwing (e.g. setText on a destroyed Text) silently dropped
+      // the message for every handler registered after it (F-06).
+      this.handlers.forEach((h) => {
+        try {
+          h(msg);
+        } catch (err) {
+          console.error('handler error', err);
+        }
+      });
     });
     ws.addEventListener('close', () => {
       console.warn('relay connection closed');

@@ -56,7 +56,10 @@ export class LobbyScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.net = new GameNetClient();
-    this.net.onMessage((msg) => {
+    // Keep the unsubscribe and release it when the scene goes away: the net
+    // client outlives this scene (it's threaded into Hub/Planet), and a stale
+    // handler here would later throw on destroyed Text objects (F-05/F-06).
+    const off = this.net.onMessage((msg) => {
       if (msg.type === 'room-created') {
         this.codeText.setText(msg.roomCode);
         this.statusText.setText('Waiting for phone…');
@@ -77,6 +80,7 @@ export class LobbyScene extends Phaser.Scene {
         this.statusText.setColor('#ff9090');
       }
     });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, off);
     this.net.connect();
   }
 }

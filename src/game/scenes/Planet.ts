@@ -190,7 +190,11 @@ export class PlanetScene extends Phaser.Scene {
       .setOrigin(1, 0)
       .setScrollFactor(0);
 
-    this.net.onMessage((msg) => {
+    // Keep the unsubscribe and release it on shutdown: without it, every
+    // replay/planet entry stacked another live handler on the shared net
+    // client, so one phone solve executed castPower() N+1 times and pushed
+    // N+1 solveTimings entries into the persisted telemetry (F-05).
+    const off = this.net.onMessage((msg) => {
       if (msg.type === 'error' && msg.message.includes('phone')) {
         linkIndicator.setText('● phone disconnected');
         linkIndicator.setColor('#ff9090');
@@ -210,6 +214,7 @@ export class PlanetScene extends Phaser.Scene {
       }
       this.castPower(msg.powerId, msg.boosted ?? false);
     });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, off);
 
     // Tell the phone which theme to dress its puzzles in. Forwarded by the relay;
     // a missing/late phone is a harmless no-op (and is re-served on phone-joined).

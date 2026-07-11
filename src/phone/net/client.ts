@@ -34,12 +34,22 @@ export class PhoneNetClient {
       ws.addEventListener('open', onOpen);
       ws.addEventListener('error', onError);
       ws.addEventListener('message', (e) => {
+        let msg: ServerToClientMsg;
         try {
-          const msg = JSON.parse(e.data as string) as ServerToClientMsg;
-          this.handlers.forEach((h) => h(msg));
+          msg = JSON.parse(e.data as string) as ServerToClientMsg;
         } catch (err) {
           console.error('bad message', err);
+          return;
         }
+        // Isolate handlers from each other: one throwing handler must not
+        // swallow the message for the rest (mirrors the game client, F-06).
+        this.handlers.forEach((h) => {
+          try {
+            h(msg);
+          } catch (err) {
+            console.error('handler error', err);
+          }
+        });
       });
       this.ws = ws;
     });
