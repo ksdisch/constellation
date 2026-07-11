@@ -17,11 +17,14 @@ function serverUrl(): string {
 export class PhoneNetClient {
   private ws: WebSocket | null = null;
   private handlers = new Set<MessageHandler>();
+  private closeHandler: (() => void) | null = null;
 
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       const ws = new WebSocket(serverUrl());
+      let opened = false;
       const onOpen = () => {
+        opened = true;
         ws.removeEventListener('open', onOpen);
         ws.removeEventListener('error', onError);
         resolve();
@@ -33,6 +36,17 @@ export class PhoneNetClient {
       };
       ws.addEventListener('open', onOpen);
       ws.addEventListener('error', onError);
+      // The socket dies silently when the OS backgrounds the tab (F-07) —
+      // surface it so the UI can stop pretending the spellbook is live.
+      // Guards: only after a successful open (a pre-open failure rejects the
+      // connect() promise instead) and only while this socket is still the
+      // current one (a deliberate close()/reconnect nulls this.ws first).
+      ws.addEventListener('close', () => {
+        if (opened && this.ws === ws) {
+          this.ws = null;
+          this.closeHandler?.();
+        }
+      });
       ws.addEventListener('message', (e) => {
         let msg: ServerToClientMsg;
         try {
@@ -62,10 +76,18 @@ export class PhoneNetClient {
     };
   }
 
-  send(msg: ClientToServerMsg): void {
+  /** Single consumer — the App owns the connection UI. Pass null to clear. */
+  onClose(handler: (() => void) | null): void {
+    this.closeHandler = handler;
+  }
+
+  /** True when the frame was actually handed to an OPEN socket (F-07). */
+  send(msg: ClientToServerMsg): boolean {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(msg));
+      return true;
     }
+    return false;
   }
 
   close(): void {

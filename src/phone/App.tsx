@@ -57,7 +57,10 @@ type Phase =
   | { kind: 'spellbook'; roomCode: string }
   | { kind: 'talents'; roomCode: string }
   | { kind: 'puzzle'; roomCode: string; power: PowerId }
-  | { kind: 'cast-feedback'; roomCode: string; power: PowerId };
+  | { kind: 'cast-feedback'; roomCode: string; power: PowerId }
+  // The socket died mid-session (tab backgrounded, wifi blip). The room code
+  // is remembered so rejoining is one tap — the relay keeps the room alive.
+  | { kind: 'disconnected'; roomCode: string };
 
 export function App() {
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
@@ -95,6 +98,13 @@ export function App() {
     clientRef.current?.close();
     const client = new PhoneNetClient();
     clientRef.current = client;
+
+    // A dead socket flips to the connection-lost state with the room code
+    // remembered for a one-tap rejoin (F-07). Fires only after a successful
+    // open and never for the deliberate close() above.
+    client.onClose(() => {
+      setPhase({ kind: 'disconnected', roomCode: code });
+    });
 
     client.onMessage((msg) => {
       if (msg.type === 'joined') {
@@ -164,13 +174,17 @@ export function App() {
     let wasPuzzle = false;
     setPhase((p) => {
       if (p.kind !== 'puzzle') return p;
-      wasPuzzle = true;
       // Boost the cast if this power has a strength talent invested (M8).
       const boosted = strengthRef.current.has(p.power);
       // Measured solve duration for the laptop's rhythm portrait (M10). Clamp to
       // ≥0 in case the clock is odd; a missing start (0) yields a sane elapsed.
       const solveMs = Math.max(0, Date.now() - puzzleStartRef.current);
-      clientRef.current?.send({ type: 'puzzle-solved', powerId: p.power, boosted, solveMs });
+      // send() reports whether the frame reached an OPEN socket (F-07): a
+      // solve on a dead link must not fake a "Cast!" or mint stardust —
+      // surface the loss instead.
+      const sent = clientRef.current?.send({ type: 'puzzle-solved', powerId: p.power, boosted, solveMs }) ?? false;
+      if (!sent) return { kind: 'disconnected', roomCode: p.roomCode };
+      wasPuzzle = true;
       return { kind: 'cast-feedback', roomCode: p.roomCode, power: p.power };
     });
     // Earn a stardust for the solve — but only for a genuine puzzle-phase solve,
@@ -193,6 +207,13 @@ export function App() {
     setPhase((p) => (p.kind === 'puzzle' ? { kind: 'spellbook', roomCode: p.roomCode } : p));
   }, []);
 
+  // Back to fresh code entry from the connection-lost screen (the remembered
+  // room may be gone — e.g. the laptop rebooted and minted a new code).
+  const reset = useCallback(() => {
+    setError(null);
+    setPhase({ kind: 'idle' });
+  }, []);
+
   return (
     <div
       style={{
@@ -212,6 +233,7 @@ export function App() {
         unlock,
         onSolved,
         onCancel,
+        reset,
         error,
         talents,
         tuning,
@@ -257,6 +279,7 @@ function renderPhase(
     unlock: (id: TalentId) => void;
     onSolved: () => void;
     onCancel: () => void;
+    reset: () => void;
     error: string | null;
     talents: TalentState;
     tuning: PuzzleOverrides;
@@ -299,6 +322,60 @@ function renderPhase(
   }
   if (phase.kind === 'puzzle') {
     return PUZZLES[phase.power]({ onSolved: actions.onSolved, onCancel: actions.onCancel, tuning: actions.tuning, theme: actions.theme });
+  }
+  if (phase.kind === 'disconnected') {
+    return (
+      <div style={{ width: '100%', maxWidth: '320px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div
+          style={{
+            background: '#1a1b3a',
+            border: '1px solid #ff6b9d',
+            borderRadius: '12px',
+            padding: '20px',
+            textAlign: 'center',
+          }}
+        >
+          <h1 style={{ margin: 0, fontSize: '22px', color: '#ff6b9d' }}>Connection lost</h1>
+          <p style={{ margin: '10px 0 0', fontSize: '14px', opacity: 0.6 }}>
+            The link to the laptop dropped. If the game is still running, rejoin with the same code.
+          </p>
+        </div>
+        <button
+          onClick={() => actions.handleJoin(phase.roomCode)}
+          style={{
+            fontSize: '18px',
+            padding: '14px 24px',
+            minHeight: '48px',
+            borderRadius: '12px',
+            border: 'none',
+            background: '#ffd166',
+            color: '#000',
+            fontWeight: 700,
+            cursor: 'pointer',
+            width: '100%',
+          }}
+        >
+          Rejoin {phase.roomCode}
+        </button>
+        <button
+          onClick={actions.reset}
+          style={{
+            fontSize: '15px',
+            padding: '12px 24px',
+            minHeight: '44px',
+            borderRadius: '12px',
+            border: '1px solid #334',
+            background: '#1a1b3a',
+            color: '#fff',
+            opacity: 0.8,
+            cursor: 'pointer',
+            width: '100%',
+          }}
+        >
+          Enter a different code
+        </button>
+      </div>
+    );
   }
   // cast-feedback
   const f = FEEDBACK[phase.power];
