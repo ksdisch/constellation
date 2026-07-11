@@ -5,6 +5,8 @@
       "args": [
         "@playwright/mcp@latest",
         "--headless",
+        "--browser",
+        "chromium",
         "--allowed-origins",
         "http://localhost:5180"
       ]
