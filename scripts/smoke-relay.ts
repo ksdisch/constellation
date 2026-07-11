@@ -8,6 +8,13 @@
  * hostile-frame hardening: a raw `null` frame and an over-limit frame must be
  * absorbed without killing the process.
  *
+ * Then the disconnect lifecycle — the couch-playtest scenario: a graceful
+ * phone close notifies the game via peer-disconnected; a GHOST phone (opened
+ * with autoPong:false so it never answers pings — a locked phone on cellular)
+ * is terminated by the heartbeat sweep (RELAY_HEARTBEAT_MS=300 here vs the
+ * 30s prod default), which frees its slot; a fresh phone then rejoins the
+ * SAME room code and a cast round-trips.
+ *
  * Process contract: the relay child is spawned DETACHED in its own process
  * group and the whole group is SIGTERMed on every exit path (finally, fail()'s
  * process.exit, Ctrl-C) — so `npm run smoke:relay | tee out.log` terminates
@@ -101,7 +108,9 @@ async function main(): Promise<void> {
   // npx → tsx → node chain (plain relay.kill() only reached the npx wrapper,
   // leaving a grandchild holding the port and any inherited stdio pipe).
   const relay = spawn('npx', ['tsx', 'server/server.ts'], {
-    env: { ...process.env, PORT: String(PORT) },
+    // Fast heartbeat so the ghost-sweep steps take ~a second, not 60s. The
+    // normal sockets auto-pong (ws default), so frequent pings don't touch them.
+    env: { ...process.env, PORT: String(PORT), RELAY_HEARTBEAT_MS: '300' },
     stdio: ['ignore', 'inherit', 'inherit'],
     detached: true,
   });
@@ -135,7 +144,7 @@ async function main(): Promise<void> {
     // 2. Game connects + creates a room.
     const game = new WebSocket(WS);
     await open(game);
-    send(game, { type: 'create-room', role: 'game' });
+    send(game, { type: 'create-room' });
     const created = await next(game, (m) => m.type === 'room-created', 'room-created');
     const roomCode = (created as { roomCode: string }).roomCode;
     if (!roomCode || roomCode.length !== 6) fail(`bad room code: ${roomCode}`);
@@ -145,7 +154,7 @@ async function main(): Promise<void> {
     const phone = new WebSocket(WS);
     await open(phone);
     const gamePhoneJoined = next(game, (m) => m.type === 'phone-joined', 'phone-joined');
-    send(phone, { type: 'join-room', role: 'phone', roomCode });
+    send(phone, { type: 'join-room', roomCode });
     await next(phone, (m) => m.type === 'joined', 'joined');
     await gamePhoneJoined;
     console.log('✓ phone joined, game notified');
@@ -197,8 +206,46 @@ async function main(): Promise<void> {
     await gameCast2;
     console.log('✓ oversized frame: sender closed with 1009, room unaffected, relay alive');
 
-    game.close();
+    // 9. Graceful phone departure → the game hears the dedicated
+    //    peer-disconnected message (F-18), not an overloaded error string.
+    const gamePeerGone = next(game, (m) => m.type === 'peer-disconnected', 'peer-disconnected (graceful close)');
     phone.close();
+    const gone = (await gamePeerGone) as { peer: string };
+    if (gone.peer !== 'phone') fail(`peer-disconnected named the wrong peer: ${JSON.stringify(gone)}`);
+    console.log('✓ graceful phone close → game notified via peer-disconnected');
+
+    // 10. Ghost phone: joins the same room but never answers pings (a locked
+    //     phone on cellular never FINs). The heartbeat sweep must terminate it
+    //     (abnormal close 1006 — no close frame), notify the game, and free
+    //     the slot (F-08).
+    const ghost = new WebSocket(WS, { autoPong: false });
+    await open(ghost);
+    const ghostJoined = next(ghost, (m) => m.type === 'joined', 'ghost joined');
+    send(ghost, { type: 'join-room', roomCode });
+    await ghostJoined;
+    const gameGhostGone = next(game, (m) => m.type === 'peer-disconnected', 'peer-disconnected (sweep)');
+    const ghostClose = closeCodeOf(ghost, 'ghost terminated by sweep');
+    const ghostGone = (await gameGhostGone) as { peer: string };
+    if (ghostGone.peer !== 'phone') fail(`sweep notification named the wrong peer: ${JSON.stringify(ghostGone)}`);
+    const ghostCode = await ghostClose;
+    if (ghostCode !== 1006) fail(`expected abnormal close 1006 for swept ghost, got ${ghostCode}`);
+    console.log('✓ ghost phone (no pong) swept by heartbeat, game notified, slot freed');
+
+    // 11. The couch scenario's payoff: a fresh phone rejoins the SAME code and
+    //     a cast round-trips.
+    const phone2 = new WebSocket(WS);
+    await open(phone2);
+    const gameRejoin = next(game, (m) => m.type === 'phone-joined', 'phone-joined (rejoin)');
+    send(phone2, { type: 'join-room', roomCode });
+    await next(phone2, (m) => m.type === 'joined', 'joined (rejoin)');
+    await gameRejoin;
+    const gameCast3 = next(game, (m) => m.type === 'power-cast', 'power-cast after rejoin');
+    send(phone2, { type: 'cast-power', powerId: 'illuminate' });
+    await gameCast3;
+    console.log('✓ same-code rejoin after sweep; cast round-trips');
+
+    game.close();
+    phone2.close();
     console.log('\n✓ relay smoke passed');
   } finally {
     stopRelay();

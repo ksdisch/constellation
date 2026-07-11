@@ -15,9 +15,12 @@ export type PuzzleTheme = 'default' | 'ice' | 'nebula';
 // that produced this cast — feeds the per-role "rhythm portrait" telemetry
 // (src/game/progression/save.ts). It is RECORDED ONLY; no gameplay branches on
 // it, so an un-instrumented or solo cast (solveMs absent) is byte-identical.
+// Roles are implied by the handshake itself (creating a room makes you the
+// game; joining one makes you the phone) — the server assigns them and never
+// read a `role` field, so the messages don't carry one.
 export type ClientToServerMsg =
-  | { type: 'create-room'; role: 'game' }
-  | { type: 'join-room'; role: 'phone'; roomCode: string }
+  | { type: 'create-room' }
+  | { type: 'join-room'; roomCode: string }
   | { type: 'cast-power'; powerId: PowerId; boosted?: boolean; solveMs?: number }
   | { type: 'puzzle-solved'; powerId: PowerId; boosted?: boolean; solveMs?: number }
   // Game → phone: the laptop cleared a planet. The phone earns bonus stardust.
@@ -29,7 +32,11 @@ export type ServerToClientMsg =
   | { type: 'room-created'; roomCode: string }
   | { type: 'joined'; roomCode: string }
   | { type: 'phone-joined' }
-  | { type: 'game-ready'; availablePowers: PowerId[] }
+  // Server-originated (never peer-forwarded, so no relayForward rule): the
+  // other member of your room went away; `peer` names who left. For the game
+  // this means the phone slot is free again (same-code rejoin works); for the
+  // phone it means the room itself died (rooms live and die with their game).
+  | { type: 'peer-disconnected'; peer: 'game' | 'phone' }
   | { type: 'power-cast'; powerId: PowerId; boosted?: boolean; solveMs?: number }
   | { type: 'planet-complete' }
   | { type: 'planet-started'; theme: PuzzleTheme }

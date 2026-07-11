@@ -190,15 +190,22 @@ export class PlanetScene extends Phaser.Scene {
       .setOrigin(1, 0)
       .setScrollFactor(0);
 
-    this.net.onMessage((msg) => {
-      if (msg.type === 'error' && msg.message.includes('phone')) {
+    // Keep the unsubscribe and release it on shutdown: without it, every
+    // replay/planet entry stacked another live handler on the shared net
+    // client, so one phone solve executed castPower() N+1 times and pushed
+    // N+1 solveTimings entries into the persisted telemetry (F-05).
+    const off = this.net.onMessage((msg) => {
+      if (msg.type === 'peer-disconnected' && msg.peer === 'phone') {
         linkIndicator.setText('● phone disconnected');
         linkIndicator.setColor('#ff9090');
         return;
       }
       // A phone that joins (or rejoins) mid-planet gets the theme so its puzzles
-      // match this planet without waiting for the next scene start.
+      // match this planet without waiting for the next scene start — and the
+      // link indicator turns green again (F-16).
       if (msg.type === 'phone-joined') {
+        linkIndicator.setText('● phone linked');
+        linkIndicator.setColor('#98ffc8');
         this.announceTheme();
         return;
       }
@@ -209,6 +216,17 @@ export class PlanetScene extends Phaser.Scene {
         this.solveTimings.push({ power: msg.powerId, ms: msg.solveMs });
       }
       this.castPower(msg.powerId, msg.boosted ?? false);
+    });
+    // The game's OWN socket dying is distinct from the phone leaving: no
+    // peer-disconnected will arrive (the relay is gone), so flip the indicator
+    // from the close callback instead (F-17).
+    this.net.onClose(() => {
+      linkIndicator.setText('● connection lost');
+      linkIndicator.setColor('#ff9090');
+    });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      off();
+      this.net.onClose(null);
     });
 
     // Tell the phone which theme to dress its puzzles in. Forwarded by the relay;
