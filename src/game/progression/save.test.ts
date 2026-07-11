@@ -327,7 +327,9 @@ describe('save / progression persistence', () => {
       });
       const t = result.telemetry['planet-1'];
       expect(t.bestClearMs).toBe(30000); // recovered, not Math.min(0, 30000)===0
-      expect(t.solves['freeze-stars'].bestMs).toBe(4000); // per-power best recovered too
+      const fs = t.solves['freeze-stars'];
+      expect(fs).toBeDefined();
+      expect(fs?.bestMs).toBe(4000); // per-power best recovered too
     });
 
     it('is pure: does not mutate input state or its nested telemetry', () => {

@@ -6,7 +6,7 @@ function progress(
   unlockedPlanets: string[],
   completed: Record<string, boolean> = {},
 ): ProgressState {
-  return { schemaVersion: CURRENT_SCHEMA_VERSION, unlockedPlanets, completed };
+  return { schemaVersion: CURRENT_SCHEMA_VERSION, unlockedPlanets, completed, telemetry: {} };
 }
 
 describe('nodeStateFor truth table', () => {
