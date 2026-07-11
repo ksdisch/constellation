@@ -6,12 +6,14 @@
 # without spending a full suite run. Complements typecheck-on-edit (which guards
 # types); this guards behavior.
 #
-# Only fires for src/*.ts edits (other files, including .tsx, exit 0 fast — there
-# are no .tsx tests). If the edited file IS a *.test.ts, that test is run; otherwise
-# the foo.ts -> foo.test.ts sibling is run, but only if it exists. On failure it
-# feeds the test output back to Claude (exit 2). During a deliberate multi-file
-# change the intermediate states may fail — that's expected; the hook goes quiet
-# once the change settles.
+# Only fires for src/ and server/ .ts edits — server/ is where relay.ts and
+# roomRegistry.ts live, the exact modules this hook exists for (F-29). Other
+# files, including .tsx, exit 0 fast — there are no .tsx tests. Absolute and
+# repo-relative path forms both match. If the edited file IS a *.test.ts, that
+# test is run; otherwise the foo.ts -> foo.test.ts sibling is run, but only if
+# it exists. On failure it feeds the test output back to Claude (exit 2).
+# During a deliberate multi-file change the intermediate states may fail —
+# that's expected; the hook goes quiet once the change settles.
 #
 # vitest.config.ts sets fileParallelism:false, so a single-file run is fast and
 # deterministic.
@@ -34,10 +36,11 @@ file=$(printf '%s' "$input" | node -e '
   });
 ' 2>/dev/null || true)
 
-# Gate on src/*.ts only. .tsx and everything else exit 0 fast.
+# Gate on src/ and server/ .ts files, absolute or repo-relative. The *.test.ts
+# arms must come first (a test file also matches the plain *.ts patterns).
 case "$file" in
-  */src/*.test.ts) test_file="$file" ;;
-  */src/*.ts) test_file="${file%.ts}.test.ts" ;;
+  */src/*.test.ts|src/*.test.ts|*/server/*.test.ts|server/*.test.ts) test_file="$file" ;;
+  */src/*.ts|src/*.ts|*/server/*.ts|server/*.ts) test_file="${file%.ts}.test.ts" ;;
   *) exit 0 ;;
 esac
 

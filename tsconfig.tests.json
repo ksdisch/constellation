@@ -1,0 +1,11 @@
+{
+  // Typechecks the colocated *.test.ts files that the base config deliberately
+  // excludes (F-28): vitest strips types without checking them, so wire-type
+  // drift between a module and its tests otherwise surfaces only as confusing
+  // runtime failures. Imported source modules are pulled in transitively and
+  // checked under the same strict flags. Run via `npm run typecheck:tests`;
+  // the typecheck-on-edit hook and CI run it alongside the base typecheck.
+  "extends": "./tsconfig.json",
+  "include": ["**/*.test.ts"],
+  "exclude": ["node_modules", "dist"]
+}

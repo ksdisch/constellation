@@ -14,7 +14,7 @@ Project context to keep in mind:
 - Stack (locked — no new deps): TypeScript 5.9 strict, Phaser 3.90 (game/laptop), React 19 (phone), Node + ws (relay), Vite 6 multi-entry. package.json is the version source of truth.
 - Four-side rule for powers: PowerId literal in src/shared/protocol.ts + tile in src/phone/components/Spellbook.tsx + puzzle component under src/phone/components/puzzles/ + cast handler in src/game/scenes/Planet.ts. All four wire in the same change.
 - Planning lives in-repo: BACKLOG.md (active queue + full Done history) and docs/ (audit fix plan, ideas, per-scope briefs). The original M0–M5 plan doc at ~/.claude/plans/ is historical.
-- Testing: colocated pure-logic Vitest suites are a sanctioned gate alongside typecheck/build, and the ?test=1 bridge (docs/AUTONOMY.md) verifies real gameplay headlessly. The human playtest remains the game-feel gate.
+- Testing: colocated pure-logic Vitest suites are a sanctioned gate alongside typecheck/build, and the ?test=1 bridge (docs/AUTONOMY.md) verifies real gameplay headlessly. CI (.github/workflows/ci.yml) runs typecheck + typecheck:tests + vitest + build + smoke:relay on every PR. The human playtest remains the game-feel gate.
 
 Once you've read those, tell me what's queued in BACKLOG.md, what milestone we're in, and ask which item I want to work on.
 
@@ -70,7 +70,7 @@ If the brief already exists, proceed: dispatch the auditor, pause for me to revi
 - Add features, refactors, or scope beyond the active brief.
 - Skip the audit phase when running the orchestrator.
 - Bypass the blast-radius gating in pr-shipper (high-tier work waits for "ship it"; medium-tier work has a 30s window; low-tier ships hands-free).
-- Add CI workflows or test infrastructure beyond existing Vitest setup. (Pure-logic unit tests in Vitest are encouraged; framework-level tests are not.)
+- Extend CI or test infrastructure beyond the sanctioned setup: colocated pure-logic Vitest suites + the minimal gate workflow (`.github/workflows/ci.yml` — typecheck, typecheck:tests, vitest, build, smoke:relay). Pure-logic unit tests are encouraged; framework-level tests are not.
 - Add dependencies. The stack is locked: Phaser, React, ws, Vite, tsx, TypeScript.
 - Put game logic in `server/server.ts` — the relay is an allowlist forwarder (`relayForward` in `server/relay.ts`); it never reads game state.
 - Add CSS files, frameworks, or `className`-based styling on the phone side. Inline `style={{}}` only.
