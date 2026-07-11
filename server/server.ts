@@ -61,9 +61,18 @@ wss.on('error', (err) => {
   console.error('[wss error]', err);
 });
 
+// Heartbeat liveness, tracked per socket. A phone that sleeps on cellular never
+// FINs: its socket stays OPEN forever, `room.phone` stays claimed, and the
+// documented manual rejoin path is blocked until kernel TCP gives up (tens of
+// minutes). Ghost games likewise leak their rooms until restart.
+const alive = new WeakMap<WebSocket, boolean>();
+
 wss.on('connection', (ws) => {
   let assignedRoom: Room | null = null;
   let role: Role | null = null;
+
+  alive.set(ws, true);
+  ws.on('pong', () => alive.set(ws, true));
 
   // ws emits 'error' for bad frames, invalid UTF-8, over-limit payloads, and
   // plain TCP resets (a phone dropping on cellular); with no listener Node
@@ -153,6 +162,25 @@ wss.on('connection', (ws) => {
     }
   });
 });
+
+// The sweep: every interval, terminate anything that hasn't ponged since the
+// last pass, then ping the survivors. terminate() fires the socket's 'close'
+// handler, so the existing cleanup frees the phone slot (making same-code
+// rejoin work — the couch-playtest scenario) or deletes the room (bounding
+// `rooms` against ghost games). Env-tunable so the relay smoke can exercise a
+// sweep in milliseconds instead of waiting out the 30s default.
+const HEARTBEAT_MS = Number(process.env.RELAY_HEARTBEAT_MS) || 30_000;
+const sweep = setInterval(() => {
+  for (const client of wss.clients) {
+    if (alive.get(client) === false) {
+      client.terminate();
+      continue;
+    }
+    alive.set(client, false);
+    client.ping();
+  }
+}, HEARTBEAT_MS);
+wss.on('close', () => clearInterval(sweep));
 
 httpServer.listen(PORT, () => {
   console.log(`Constellation relay listening on ws://localhost:${PORT} (health: GET /healthz)`);
