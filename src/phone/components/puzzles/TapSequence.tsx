@@ -12,6 +12,13 @@ interface Props {
   theme?: PuzzleTheme;
 }
 
+/**
+ * Default countdown length. The component uses it as its `totalSeconds`
+ * default; App.tsx imports it to cap the reported `solveMs` at what the timer
+ * actually allowed (F-50).
+ */
+export const TAP_SEQUENCE_TOTAL_SECONDS = 25;
+
 const CELL_COLORS = ['#7ad8ff', '#9a7aff', '#ffd166', '#98ffc8'];
 const FLASH_ON_MS = 400;
 const FLASH_GAP_MS = 200;
@@ -22,7 +29,7 @@ const DEMO_PRE_DELAY_MS = 300;
 export function TapSequence({
   onSolved,
   onCancel,
-  totalSeconds = 25,
+  totalSeconds = TAP_SEQUENCE_TOTAL_SECONDS,
   sequenceLength = 5,
   revealFirst = false,
   theme,
@@ -38,6 +45,12 @@ export function TapSequence({
   const [tapHighlight, setTapHighlight] = useState<number | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(totalSeconds);
   const solvedRef = useRef(false);
+  // The tap-highlight reset is tracked so rapid taps re-arm cleanly and a
+  // pending highlight is dropped on unmount (F-48).
+  const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (tapTimerRef.current !== null) clearTimeout(tapTimerRef.current);
+  }, []);
 
   useEffect(() => {
     if (mode !== 'demo') return;
@@ -85,9 +98,12 @@ export function TapSequence({
   }, [secondsLeft, onCancel]);
 
   function onTap(cellIdx: number) {
-    if (mode !== 'input') return;
+    // solvedRef mirrors Trivia's guard (F-49): mode stays 'input' after the
+    // winning tap, so a stray extra tap must not re-fire onSolved.
+    if (mode !== 'input' || solvedRef.current) return;
     setTapHighlight(cellIdx);
-    setTimeout(() => setTapHighlight(null), TAP_HIGHLIGHT_MS);
+    if (tapTimerRef.current !== null) clearTimeout(tapTimerRef.current);
+    tapTimerRef.current = setTimeout(() => setTapHighlight(null), TAP_HIGHLIGHT_MS);
     if (cellIdx === sequence[inputProgress]) {
       const next = inputProgress + 1;
       if (next === sequence.length) {
@@ -101,7 +117,7 @@ export function TapSequence({
     }
   }
 
-  const timeColor = secondsLeft <= 5 ? '#ff9090' : '#a8b0d8';
+  const timeColor = secondsLeft <= 5 ? '#ff6b9d' : '#a8b0d8';
   const statusLabel =
     mode === 'input' ? `${inputProgress}/${sequence.length}` : mode === 'fail' ? 'miss' : 'watch';
 
@@ -127,7 +143,7 @@ export function TapSequence({
         <span style={{ opacity: 0.6, color: pal.glyph ? pal.accent : undefined }}>
           {pal.glyph && `${pal.glyph} `}Summon Platform · {statusLabel}
         </span>
-        <span style={{ color: timeColor }}>⏱ {secondsLeft}s</span>
+        <span aria-live={secondsLeft <= 5 ? 'polite' : 'off'} style={{ color: timeColor }}>⏱ {secondsLeft}s</span>
       </div>
 
       <div
@@ -180,11 +196,13 @@ export function TapSequence({
         onClick={onCancel}
         style={{
           fontSize: '14px',
-          padding: '10px',
+          padding: '10px 20px',
+          minHeight: '44px',
           borderRadius: '8px',
           border: 'none',
           background: 'transparent',
-          color: '#667',
+          color: '#fff',
+          opacity: 0.6,
           cursor: 'pointer',
         }}
       >

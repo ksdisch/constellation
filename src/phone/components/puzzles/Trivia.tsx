@@ -1,91 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PuzzleTheme } from '../../../shared/protocol';
 import { paletteFor } from '../../puzzleThemes';
+import { QUESTIONS, ROUND_SIZE, TRIVIA_TIMER_SECONDS, sampleQuestions, type Question } from './triviaLogic';
 
-export type Question = {
-  prompt: string;
-  options: [string, string, string, string];
-  correctIndex: 0 | 1 | 2 | 3;
-};
-
-const QUESTIONS: Question[] = [
-  {
-    prompt: 'How many planets are in our solar system?',
-    options: ['7', '8', '9', '10'],
-    correctIndex: 1,
-  },
-  {
-    prompt: 'Which planet is known as the Red Planet?',
-    options: ['Venus', 'Jupiter', 'Mars', 'Saturn'],
-    correctIndex: 2,
-  },
-  {
-    prompt: 'What is the largest ocean on Earth?',
-    options: ['Atlantic', 'Indian', 'Arctic', 'Pacific'],
-    correctIndex: 3,
-  },
-  {
-    prompt: 'How many legs does a spider have?',
-    options: ['6', '8', '10', '12'],
-    correctIndex: 1,
-  },
-  {
-    prompt: 'What is the chemical symbol for gold?',
-    options: ['Go', 'Gd', 'Au', 'Ag'],
-    correctIndex: 2,
-  },
-  {
-    prompt: 'How many sides does a hexagon have?',
-    options: ['5', '6', '7', '8'],
-    correctIndex: 1,
-  },
-  {
-    prompt: 'How many strings does a standard guitar have?',
-    options: ['4', '5', '6', '7'],
-    correctIndex: 2,
-  },
-  {
-    prompt: 'How many players from one team are on a soccer field at once?',
-    options: ['9', '10', '11', '12'],
-    correctIndex: 2,
-  },
-  {
-    prompt: 'What is the tallest mountain on Earth?',
-    options: ['K2', 'Everest', 'Denali', 'Kilimanjaro'],
-    correctIndex: 1,
-  },
-  {
-    prompt: 'What gas do plants absorb from the air?',
-    options: ['Oxygen', 'Nitrogen', 'Carbon dioxide', 'Hydrogen'],
-    correctIndex: 2,
-  },
-  {
-    prompt: 'Which animal is the largest mammal on Earth?',
-    options: ['African elephant', 'Blue whale', 'Giraffe', 'Great white shark'],
-    correctIndex: 1,
-  },
-  {
-    prompt: 'How many continents are there?',
-    options: ['5', '6', '7', '8'],
-    correctIndex: 2,
-  },
-];
+export type { Question } from './triviaLogic';
 
 const ACCENT = '#f6c971';
 const WRONG_FLASH_MS = 600;
-const ROUND_SIZE = 3;
-
-function sampleQuestions(pool: readonly Question[], count: number): Question[] {
-  const copy = pool.slice();
-  const out: Question[] = [];
-  const take = Math.min(count, copy.length);
-  for (let i = 0; i < take; i++) {
-    const idx = Math.floor(Math.random() * copy.length);
-    out.push(copy[idx]);
-    copy.splice(idx, 1);
-  }
-  return out;
-}
 
 interface Props {
   onSolved: () => void;
@@ -101,7 +22,7 @@ export function Trivia({
   onSolved,
   onCancel,
   questionPool = QUESTIONS,
-  timerSeconds = 30,
+  timerSeconds = TRIVIA_TIMER_SECONDS,
   forgiveMistakes = false,
   theme,
 }: Props) {
@@ -111,6 +32,12 @@ export function Trivia({
   const [wrong, setWrong] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(timerSeconds);
   const solvedRef = useRef(false);
+  // The wrong-flash / round-reset timer is tracked so a pending reset is
+  // dropped on unmount (F-48).
+  const wrongTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (wrongTimerRef.current !== null) clearTimeout(wrongTimerRef.current);
+  }, []);
 
   useEffect(() => {
     if (secondsLeft <= 0) return;
@@ -137,7 +64,8 @@ export function Trivia({
       }
     } else {
       setWrong(true);
-      setTimeout(() => {
+      if (wrongTimerRef.current !== null) clearTimeout(wrongTimerRef.current);
+      wrongTimerRef.current = setTimeout(() => {
         // "Second Chance" talent: stay on the current question instead of
         // resetting the whole round back to question 1.
         if (!forgiveMistakes) {
@@ -152,7 +80,7 @@ export function Trivia({
   const current = round[idx];
   if (!current) return null;
 
-  const timeColor = secondsLeft <= 5 ? '#ff9090' : '#a8b0d8';
+  const timeColor = secondsLeft <= 5 ? '#ff6b9d' : '#a8b0d8';
 
   return (
     <div
@@ -176,7 +104,7 @@ export function Trivia({
         <span style={{ opacity: 0.6, color: pal.glyph ? pal.accent : undefined }}>
           {pal.glyph && `${pal.glyph} `}Illuminate · {idx + 1}/{round.length}
         </span>
-        <span style={{ color: timeColor }}>⏱ {secondsLeft}s</span>
+        <span aria-live={secondsLeft <= 5 ? 'polite' : 'off'} style={{ color: timeColor }}>⏱ {secondsLeft}s</span>
       </div>
 
       <div
@@ -202,6 +130,8 @@ export function Trivia({
 
       {wrong && (
         <div
+          role="status"
+          aria-live="polite"
           style={{
             color: '#ff6b9d',
             fontSize: '15px',
@@ -265,7 +195,8 @@ export function Trivia({
           borderRadius: '8px',
           border: 'none',
           background: 'transparent',
-          color: '#667',
+          color: '#fff',
+          opacity: 0.6,
           cursor: 'pointer',
         }}
       >

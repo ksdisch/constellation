@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PuzzleTheme } from '../../../shared/protocol';
 import { paletteFor } from '../../puzzleThemes';
+import { PHASE_ALIGN_TOTAL_SECONDS, randomMisaligned } from './phaseAlignLogic';
 
 /**
  * Phase Align — the Phase Dash puzzle.
@@ -25,14 +26,8 @@ interface Props {
 }
 
 const ACCENT = '#5eead4';
-const MISALIGNED = [90, 180, 270] as const;
 
-/** A random non-aligned rotation so a dial never starts already solved. */
-function randomMisaligned(): number {
-  return MISALIGNED[Math.floor(Math.random() * MISALIGNED.length)];
-}
-
-export function PhaseAlign({ onSolved, onCancel, totalSeconds = 30, dialCount = 4, theme }: Props) {
+export function PhaseAlign({ onSolved, onCancel, totalSeconds = PHASE_ALIGN_TOTAL_SECONDS, dialCount = 4, theme }: Props) {
   const pal = paletteFor(theme);
   const [dials, setDials] = useState<number[]>(() =>
     Array.from({ length: dialCount }, randomMisaligned)
@@ -70,7 +65,7 @@ export function PhaseAlign({ onSolved, onCancel, totalSeconds = 30, dialCount = 
   }
 
   const alignedCount = dials.filter((r) => r === 0).length;
-  const timeColor = secondsLeft <= 5 ? '#ff9090' : '#a8b0d8';
+  const timeColor = secondsLeft <= 5 ? '#ff6b9d' : '#a8b0d8';
 
   return (
     <div
@@ -94,7 +89,7 @@ export function PhaseAlign({ onSolved, onCancel, totalSeconds = 30, dialCount = 
         <span style={{ opacity: 0.6, color: pal.glyph ? pal.accent : undefined }}>
           {pal.glyph && `${pal.glyph} `}Phase Align · {alignedCount}/{dials.length} aligned
         </span>
-        <span style={{ color: timeColor }}>⏱ {secondsLeft}s</span>
+        <span aria-live={secondsLeft <= 5 ? 'polite' : 'off'} style={{ color: timeColor }}>⏱ {secondsLeft}s</span>
       </div>
 
       <p style={{ margin: 0, fontSize: '13px', opacity: 0.6, textAlign: 'center', color: pal.glyph ? pal.glow : undefined }}>
@@ -160,7 +155,8 @@ export function PhaseAlign({ onSolved, onCancel, totalSeconds = 30, dialCount = 
           borderRadius: '8px',
           border: 'none',
           background: 'transparent',
-          color: '#667',
+          color: '#fff',
+          opacity: 0.6,
           cursor: 'pointer',
         }}
       >
