@@ -18,6 +18,7 @@ Pick items with the `project-backlog` skill in Claude Code.
 - **Acceptance:** Phases 0–5 of the audit's fix plan landed with their per-phase gates green (phase 6 rides the actual public deploy). Findings F-01…F-59 closed or explicitly deferred with a note.
 - **Size:** L (≈5–7 focused days across 6 independently shippable phases)
 - **Added:** 2026-07-09
+- **Progress:** Phase 0 landed 2026-07-10 (PR #26) — F-01, F-02, F-09, F-10, F-11, F-12, F-20, F-38a, F-58 closed; relay smoke now probes hostile frames and terminates when piped. Next: Phase 1 (disconnect/ghost lifecycle).
 
 ### [Exploration] Playtest M2 with girlfriend — the "is it fun?" gate
 - **Why:** The plan explicitly names this as the critical gate before any M3 work. The whole asymmetric premise lives or dies here. If the loop doesn't feel fun, the power-to-puzzle pairing or the asymmetry itself may need to change before more code gets written.
