@@ -1,6 +1,6 @@
 # The Planet That Knows You Two
 
-**Status:** Idea — not committed. Added by `/moonshot` (tethered run) on 2026-06-07. Backlog stub: `[Exploration] The Planet That Knows You Two` in [`BACKLOG.md`](../../BACKLOG.md). Related: [`specialization.md`](specialization.md) (the phone-side difficulty-tuning idea this partly subsumes).
+**Status:** Wedge shipped — the M10 telemetry + portrait cut (the "credible first step" below) landed 2026-06-14; see the `[Exploration] The Planet That Knows You Two` entry in [`BACKLOG.md`](../../BACKLOG.md) **Done**. The generator itself is spiked in draft PRs #23/#24 (M12), not merged. Originally added by `/moonshot` (tethered run) on 2026-06-07. Related: [`specialization.md`](specialization.md) (the phone-side difficulty-tuning idea this partly subsumes).
 
 ## Premise
 

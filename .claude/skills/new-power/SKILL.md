@@ -67,5 +67,5 @@ Find the `castPower(powerId: PowerId)` method (grep `castPower`). Add a `case '<
 
 ## Gotchas
 - The **render chain in App.tsx** and the **Spellbook tile** are the two sides the compiler does NOT guard. Double-check them.
-- CLAUDE.md historically names the cast scene `Level.ts`; on this branch it's `src/game/scenes/Planet.ts`. Grep `castPower` rather than trusting the path.
-- Don't refactor the power architecture — extend it, modeled on the first three powers.
+- The cast scene is `src/game/scenes/Planet.ts` (pre-M4 docs called it `Level.ts`). Grep `castPower` rather than trusting remembered paths.
+- Don't refactor the power architecture — extend it, modeled on the first four powers.

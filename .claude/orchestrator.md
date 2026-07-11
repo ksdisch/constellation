@@ -11,7 +11,7 @@ This document governs every session that ships a backlog item — whether autono
 - **Never** merge a PR. Open it; the user merges.
 - **Never** add dependencies. Stack is locked: Phaser, React, ws, Vite, tsx, TypeScript.
 - **Never** add CSS files, frameworks, or non-inline styling on the phone side. Inline `style={{}}` only.
-- **Never** put game logic in `server/server.ts`. The relay is intentionally opaque pass-through.
+- **Never** put game logic in `server/server.ts`. The relay is an allowlist forwarder (`relayForward` in `server/relay.ts`); a new peer-forwarded message type needs a `relayForward` rule, never game logic.
 - **Never** modify `server/server.ts` without an explicit Open question → user approval loop. Surface it; don't assume it's safe.
 - **Never** break Freeze Stars. It is the M2 reference power; every smoke checklist must include a Freeze Stars regression check.
 - **Never** skip the audit before starting implementation. The auditor's blast-radius tier drives the push gate.
