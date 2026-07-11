@@ -19,6 +19,7 @@ Read [README.md](README.md) for run instructions. Active work and full history l
 npm install              # first-time setup
 npm run dev              # vite + relay concurrently (game on :5180, ws on :3081)
 npm run typecheck        # tsc --noEmit
+npm run typecheck:tests  # tsc -p tsconfig.tests.json (the colocated *.test.ts files, excluded from the base config)
 npm run build            # tsc && vite build
 npm run preview          # preview built bundle
 npm run test             # vitest run (pure-logic unit tests)
@@ -102,8 +103,8 @@ Repo-local Claude Code slash commands (`.claude/commands/`) and skills (`.claude
 **Hooks** (`.claude/settings.json` → scripts in `.claude/hooks/`, shared with collaborators)
 
 - `protocol-boundary-guard` (PreToolUse) — non-blocking reminder when `src/shared/protocol.ts` is edited: update both clients in the same commit; wire the full power contract.
-- `typecheck-on-edit` (PostToolUse) — runs `tsc --noEmit` after `*.ts/*.tsx` edits and feeds errors back (blocking; flip the trailing `exit 2`→`exit 0` in the script to make it advisory).
-- `colocated-test-on-edit` (PostToolUse) — runs **only** the colocated Vitest sibling of an edited `src/*.ts` (or the test itself); complements `typecheck-on-edit` (types) by catching pure-logic regressions (blocking: `exit 2` feeds the failing test back; fast-exits when no sibling test exists).
+- `typecheck-on-edit` (PostToolUse) — runs `tsc --noEmit` **and** `typecheck:tests` after `*.ts/*.tsx` edits inside this repo (absolute paths outside it are skipped) and feeds errors back (blocking; flip the trailing `exit 2`→`exit 0` in the script to make it advisory).
+- `colocated-test-on-edit` (PostToolUse) — runs **only** the colocated Vitest sibling of an edited `src/` or `server/` `.ts` (or the test itself); complements `typecheck-on-edit` (types) by catching pure-logic regressions (blocking: `exit 2` feeds the failing test back; fast-exits when no sibling test exists).
 
 **MCP servers** (`.mcp.json`, shared with collaborators)
 
