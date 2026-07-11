@@ -1,3 +1,7 @@
+> [!WARNING]
+> **Historical snapshot — frozen at M4, generated 2026-05-16. Nothing below is maintained.**
+> Present-tense claims in this document are now false: the project has 4 powers (not 3), 3 planets, durable persistence, a talent system, telemetry, a Vitest suite, a Dockerfile, and an **allowlist** relay (not pass-through). For current truth read [README.md](README.md), [CLAUDE.md](CLAUDE.md), [BACKLOG.md](BACKLOG.md), and [docs/AUDIT-2026-07-09.md](docs/AUDIT-2026-07-09.md). This file is kept for early history and decision context; regenerating it from HEAD is audit decision #5, still open.
+
 # Constellation
 
 > Asymmetric cozy 2-player co-op. The laptop runs a Phaser platformer; the phone runs React puzzles. A tiny `ws` relay glues them via a 6-letter room code, and solving a puzzle on the phone casts a power that reshapes the laptop's world.

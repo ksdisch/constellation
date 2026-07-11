@@ -16,9 +16,11 @@ the phone + relay entirely:
 http://<host>:5180/?solo=1&test=1
 ```
 
-> **Container networking:** if the browser runs in a container, `localhost` is the container, not the
-> host. Use the LAN IP Vite prints as `Network:` (it is in Vite's `allowedHosts`); `host.docker.internal`
-> returns 403. Do **not** relax `vite.config.ts` to work around this.
+> **Browser networking:** the repo-pinned playwright MCP (`.mcp.json`) is origin-locked to
+> `http://localhost:5180` — drive it via `localhost`. Only when the browser genuinely runs in a
+> separate container (where `localhost` is the container, not the host) use the LAN IP Vite prints
+> as `Network:` (it is in Vite's `allowedHosts`, but not in the MCP's allowed origins);
+> `host.docker.internal` returns 403. Do **not** relax `vite.config.ts` to work around this.
 
 ## Bridge surface (`window.__constellation`)
 

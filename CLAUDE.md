@@ -2,15 +2,16 @@
 
 Asymmetric cozy 2-player co-op. Laptop runs a Phaser platformer (astronaut); phone runs React puzzles (Starglow companion); a small `ws` relay glues them via room codes.
 
-Read [README.md](README.md) for run instructions. High-level plan and milestones live at `~/.claude/plans/i-ve-started-this-in-fluttering-tiger.md`. Active work tracked in [BACKLOG.md](BACKLOG.md).
+Read [README.md](README.md) for run instructions. Active work and full history live in [BACKLOG.md](BACKLOG.md); the current fix plan is [docs/AUDIT-2026-07-09.md](docs/AUDIT-2026-07-09.md); deferred ideas in [docs/ideas/](docs/ideas/).
 
 ## File layout
 
-- `src/game/` — Phaser 3 game client (laptop). Scenes in `scenes/`, entity classes in `entities/`, networking in `net/`, bootstrap in `main.ts`. Juice (procedural SFX + particle/shake effect tables and the scene-bound `JuiceController` applier) lives in `juice/`.
-- `src/phone/` — React 19 phone client. Components in `components/`, puzzles in `components/puzzles/`, networking in `net/`, bootstrap in `main.tsx`.
+- `src/game/` — Phaser 3 game client (laptop). Scenes in `scenes/`, entity classes in `entities/`, data-driven planet configs + the ordered registry in `planets/` (array order = progression), persistence/telemetry/portrait in `progression/`, networking in `net/`, the `?test=1` bridge in `testBridge.ts`, bootstrap in `main.ts`. Juice (procedural SFX + music + particle/shake effect tables and the scene-bound `JuiceController` applier) lives in `juice/`.
+- `src/phone/` — React 19 phone client. Components in `components/`, puzzles in `components/puzzles/`, the talent constellation (node table + stardust save) in `talents/`, per-planet puzzle palettes in `puzzleThemes.ts`, networking in `net/`, bootstrap in `main.tsx`.
 - `src/shared/` — Code shared between game and phone. Only `protocol.ts` lives here (wire message types). Both sides import from `../shared/protocol`. Treat this as a strict boundary — nothing else goes here.
-- `server/` — Node + `ws` relay. Pass-through forwarding by room code. No game logic; never put game logic here.
+- `server/` — Node + `ws` relay. Allowlist forwarding by room code: the peer-forwarding policy is the pure `relayForward()` (`relay.ts`) and room lifecycle is the pure `RoomRegistry` (`roomRegistry.ts`), both unit-tested. No game logic; never put game logic here.
 - `index.html` / `phone.html` — Vite multi-entry HTML files. `index.html` boots the game, `phone.html` boots the phone client.
+- `scripts/` — dev harnesses (`smoke-relay.ts`, behind `npm run smoke:relay`). `docs/` — deploy guide, autonomy playbook, audit + fix plan, ideas, per-scope briefs.
 
 ## Commands
 
@@ -22,6 +23,8 @@ npm run build            # tsc && vite build
 npm run preview          # preview built bundle
 npm run test             # vitest run (pure-logic unit tests)
 npm run test:watch       # vitest in watch mode
+npm run smoke:relay      # boot the real relay; assert co-op round-trip + ghost-sweep rejoin
+npm run start:relay      # run the relay alone (the container CMD; honors $PORT)
 ```
 
 Vite binds to `0.0.0.0`; the printed LAN URL is what the phone uses on the same wifi. Playtest remains the integration gate for game feel; Vitest covers pure, framework-free logic (e.g. the progression/persistence module).
@@ -31,20 +34,20 @@ Vite binds to `0.0.0.0`; the printed LAN URL is what the phone uses on the same 
 - **TypeScript strict mode** with `noUnusedLocals`, `noUnusedParameters`, `noImplicitReturns`. No `any`. No unused imports or locals.
 - **React (phone):** functional components, hooks, inline `style={{}}` objects only. No CSS files, no CSS frameworks, no styled-components, no `className`-based styling. Match the existing palette (panels `#1a1b3a`, cold accent `#7ad8ff`, error `#ff6b9d`, dim text `opacity: 0.6` on `#fff`). Touch targets ≥ 44px.
 - **Phaser (game):** scenes extend `Phaser.Scene` and live in `scenes/`. Entities are thin classes in `entities/` wrapping a sprite, exposing `.sprite` and any update/behavior methods. Use arcade physics. Static groups for terrain.
-- **Wire protocol:** any change to `src/shared/protocol.ts` must be matched by changes in both `src/game/` and `src/phone/` in the same commit. The relay is an **allowlist** forwarder, not a pass-through: peer-forwarding lives in the pure `relayForward()` (`server/relay.ts`, unit-tested), which only knows the `cast-power|puzzle-solved → power-cast` rename (carrying `boosted`) and `planet-complete`. A **new peer-forwarded message type needs a `relayForward` rule** — but still no game logic (the relay never reads state).
-- **Powers and puzzles:** each power has (a) a `PowerId` literal in `protocol.ts`, (b) a tile in `src/phone/components/Spellbook.tsx`, (c) a puzzle component under `src/phone/components/puzzles/`, (d) a cast handler in `src/game/scenes/Level.ts`. Wire all four sides in the same change.
+- **Wire protocol:** any change to `src/shared/protocol.ts` must be matched by changes in both `src/game/` and `src/phone/` in the same commit. The relay is an **allowlist** forwarder, not a pass-through: peer-forwarding lives in the pure `relayForward()` (`server/relay.ts`, unit-tested), which only knows the `cast-power|puzzle-solved → power-cast` rename (carrying `boosted` and `solveMs`), `planet-complete`, and `planet-started` (theme). A **new peer-forwarded message type needs a `relayForward` rule** — but still no game logic (the relay never reads state).
+- **Powers and puzzles:** each power has (a) a `PowerId` literal in `protocol.ts`, (b) a tile in `src/phone/components/Spellbook.tsx`, (c) a puzzle component under `src/phone/components/puzzles/`, (d) a cast handler in `src/game/scenes/Planet.ts`. Wire all four sides in the same change.
 - **Puzzle component contract:** `{ onSolved: () => void; onCancel: () => void }`. Optionally accepts difficulty / timing props with defaults. See `QuickMath.tsx` for the template.
 - **Entity pattern:** `constructor(scene, x, y)`, holds `.sprite`, exposes `.update()` if it needs per-frame logic. See `Astronaut.ts` and `Enemy.ts`.
 
 ## Do / don't
 
-- **Do** extend, don't refactor: when adding a power, model it on Freeze Stars / QuickMath. Don't rework the existing power architecture; it's good enough for the first three powers.
+- **Do** extend, don't refactor: when adding a power, model it on Freeze Stars / QuickMath. Don't rework the existing power architecture; it's good enough for the first four powers.
 - **Do** keep `src/shared/` minimal — only wire-protocol types.
 - **Don't** put game logic in the relay server.
 - **Don't** introduce new dependencies casually. The stack is locked: Phaser, React, ws, Vite, tsx, TypeScript. Adding anything else is a real decision.
 - **Don't** add CSS files, frameworks, or imports of style files.
 - **Do** test pure logic with Vitest (jsdom env, configured in `vitest.config.ts`). Vitest is now a sanctioned dev dependency. Keep tests on framework-free, deterministic units — colocated `*.test.ts` next to the module (see `src/game/progression/`). Don't instantiate Phaser scenes or React components in tests; the playtest gate (M2 "is it fun?") and `npm run typecheck` / `npm run build` cover the framework wiring.
-- **Don't** break Freeze Stars when adding new powers. Manually smoke-test it after touching anything in `Spellbook.tsx`, `App.tsx`, or `Level.ts`.
+- **Don't** break Freeze Stars when adding new powers. Manually smoke-test it after touching anything in `Spellbook.tsx`, `App.tsx`, or `Planet.ts`.
 
 ## Commit style
 
@@ -60,9 +63,9 @@ chore(m0): scaffold Vite + Phaser + React skeleton
 
 - **Vite multi-entry:** `vite.config.ts` registers both `index.html` and `phone.html` under `rollupOptions.input`. New top-level entries must be added there.
 - **Phaser asset preload:** generated textures (rectangles, simple shapes) live in `src/game/scenes/Boot.ts`. If a new entity needs a texture, register it there — not at instantiation time.
-- **Relay reconnect:** `server.ts` does not currently auto-reconnect. If the phone disconnects mid-level, the room is preserved but rejoin is manual (refresh phone, re-enter code). Don't rely on persistent reconnection logic in scene code.
+- **Relay reconnect:** there is no automatic reconnection. The relay heartbeat-sweeps dead sockets (~30s) so a ghost phone frees its room slot; both clients surface socket loss, and the phone offers a one-tap same-code rejoin. Don't rely on persistent reconnection logic in scene code.
 - **Phaser body types:** access physics body via `sprite.body as Phaser.Physics.Arcade.Body`. The cast is intentional; the union type makes direct access cumbersome. Established in the codebase.
-- **Worktrees:** this repo is currently being worked on in a git worktree under `.claude/worktrees/`. The `.claude/` directory at repo root holds orchestrator scaffolding (this CLAUDE.md, `agents/`, `templates/`, `orchestrator-prompt.md`). Don't confuse with the worktree machinery.
+- **Worktrees:** orchestrator/agent flows sometimes check this repo out as a git worktree under `.claude/worktrees/` (a fresh clone has none). The `.claude/` directory at repo root holds orchestrator scaffolding (this CLAUDE.md, `agents/`, `templates/`, `orchestrator-prompt.md`). Don't confuse it with the worktree machinery.
 
 ## Orchestrator-worker pattern
 

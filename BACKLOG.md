@@ -18,13 +18,13 @@ Pick items with the `project-backlog` skill in Claude Code.
 - **Acceptance:** Phases 0–5 of the audit's fix plan landed with their per-phase gates green (phase 6 rides the actual public deploy). Findings F-01…F-59 closed or explicitly deferred with a note.
 - **Size:** L (≈5–7 focused days across 6 independently shippable phases)
 - **Added:** 2026-07-09
-- **Progress:** Phase 0 landed 2026-07-10 (PR #26) — F-01, F-02, F-09, F-10, F-11, F-12, F-20, F-38a, F-58 closed; relay smoke now probes hostile frames and terminates when piped. Phase 1 landed 2026-07-10 (PR #27) — F-05, F-06, F-07, F-08, F-16, F-17, F-18, F-21, F-35, F-36 closed (rooms map bounded, F-26-adjacent): relay heartbeat sweeps ghosts, scenes release their handlers, both clients surface socket death (phone gets a one-tap same-code rejoin), dedicated `peer-disconnected` message, pure `RoomRegistry` unit-tested; smoke:relay now proves the ghost-sweep → same-code-rejoin couch scenario. Phase 2 landed 2026-07-10 (PR #28) — F-03, F-04, F-13, F-14, F-15, F-19, F-40, F-41 closed: particle bursts render on-screen for the first time (`explode()` args were emitter-local), freeze re-cast extends via a token guard, post-win casts are ignored, the end card is no longer striped by the curtain/dark zone, solo drops the false phone-linked indicator, a swallowed platform re-cast flashes PLATFORM HOLDS!, hub music resumes on first tap, and the master GainNode is released per track switch; gate = full bridge playbook (planet-1/2/3 clears, freeze re-cast extension, phase ±) plus a screenshot pass that finally SEES the bursts — the human playtest is now worth running. Next: Phase 3 (docs tell the truth).
+- **Progress:** Phase 0 landed 2026-07-10 (PR #26) — F-01, F-02, F-09, F-10, F-11, F-12, F-20, F-38a, F-58 closed; relay smoke now probes hostile frames and terminates when piped. Phase 1 landed 2026-07-10 (PR #27) — F-05, F-06, F-07, F-08, F-16, F-17, F-18, F-21, F-35, F-36 closed (rooms map bounded, F-26-adjacent): relay heartbeat sweeps ghosts, scenes release their handlers, both clients surface socket death (phone gets a one-tap same-code rejoin), dedicated `peer-disconnected` message, pure `RoomRegistry` unit-tested; smoke:relay now proves the ghost-sweep → same-code-rejoin couch scenario. Phase 2 landed 2026-07-10 (PR #28) — F-03, F-04, F-13, F-14, F-15, F-19, F-40, F-41 closed: particle bursts render on-screen for the first time (`explode()` args were emitter-local), freeze re-cast extends via a token guard, post-win casts are ignored, the end card is no longer striped by the curtain/dark zone, solo drops the false phone-linked indicator, a swallowed platform re-cast flashes PLATFORM HOLDS!, hub music resumes on first tap, and the master GainNode is released per track switch; gate = full bridge playbook (planet-1/2/3 clears, freeze re-cast extension, phase ±) plus a screenshot pass that finally SEES the bursts — the human playtest is now worth running. Phase 3 landed 2026-07-11 (PR #29) — F-24, F-25, F-26, F-27 (banner-only), F-33, F-59 closed: README/CLAUDE.md/session-start now describe the shipped game (4 powers, 3 planets, hub/talents/portrait; solo keys 1–4; `?test=1` + `smoke:relay` pointers; allowlist relay wording everywhere), PROJECT_GUIDE.md carries a loud historical-snapshot banner and sessions are no longer routed into it, this file's playtest item is reframed to the shipped game, and the F-59 one-liners are fixed (plus three gate-caught stragglers in protocol-steward, the new-power skill, and CLAUDE.md's server line); gate = the audit's grep sweep (`Level.ts` / pass-through / three powers / M2-M4) with zero live hits outside deliberately historical text. Next: Phase 4 (test & CI spine — needs decision #1) and Phase 5 (phone hygiene).
 
-### [Exploration] Playtest M2 with girlfriend — the "is it fun?" gate
-- **Why:** The plan explicitly names this as the critical gate before any M3 work. The whole asymmetric premise lives or dies here. If the loop doesn't feel fun, the power-to-puzzle pairing or the asymmetry itself may need to change before more code gets written.
-- **Acceptance:** Play one full session (handshake → spellbook → Quick Math → freeze → run past enemy → win). Write down: did the cast feel rewarding? Was the puzzle the right difficulty? Did the 3-second freeze feel tight or generous? Did the pairing feel meaningful or arbitrary?
+### [Exploration] Playtest the shipped game with girlfriend — the "is it fun?" gate
+- **Why:** The fun-gate playtest has genuinely never run. Originally framed as the M2 gate "before any M3 work", but the game has since grown into a hub + 3 planets + 4 powers + talents + the rhythm portrait without ever being tested on the only audience that matters. The whole asymmetric premise lives or dies here. (Audit Phase 2 fixed the feel bugs — invisible bursts, truncated freezes — so the playtest is finally worth running.)
+- **Acceptance:** Play at least one full co-op session (handshake → hub → clear planets 1–3 with real phone casts → spend stardust in the talent tree → read the portrait card). Write down: did casts feel rewarding? Was puzzle difficulty right? Did the freeze/platform/phase windows feel tight or generous? Did the pairing feel meaningful — and did the portrait feel true to how you two played?
 - **Size:** S
-- **Added:** 2026-05-12
+- **Added:** 2026-05-12 (reworded 2026-07-11 per audit F-33)
 
 ### [Feature] Deploy — push the relay + clients to a public host (the actual ship)
 - **Why:** M5. The remaining account-bound finish: deploy readiness (container, health endpoint, env-driven relay URL, docs) shipped 2026-06-07 — see Done. What's left needs **your** Fly + itch.io accounts.
@@ -73,15 +73,6 @@ _(nothing in flight)_
 - **Added:** 2026-06-07
 - **Completed:** 2026-06-07
 - **Note:** Built by the `/autonomous-milestone` workflow. Relay forwarding logic untouched (the pure `relayForward()` + its 105-test suite unchanged); the only server change is wrapping the WS server in a `node:http` server that answers `GET /` and `/healthz` with `200 "constellation relay ok"` on the **same** port — exactly what a single-internal-port `http_service` wants. New `src/vite-env.d.ts` types `import.meta.env.VITE_RELAY_URL` (strict-safe, no `vite/client` pull-in). New `npm run start:relay` (the container CMD, honors `$PORT`) and `npm run smoke:relay` — a real-socket harness (`scripts/smoke-relay.ts`) that boots the actual relay and asserts health + the full create-room→join→**boosted** cast→`power-cast`→`planet-complete` round-trip. Verified: typecheck clean, 105 Vitest green, `smoke:relay` green, and a `VITE_RELAY_URL=…` production build bakes the URL into **both** bundles while a no-env build contains zero occurrences (LAN dev preserved). **Deliberate cuts:** relay-only container (clients are static, hosted separately); kept `tsx` as the runtime (locked-stack tool, no compile step); Cloudflare DO left as a noted non-goal (needs a different adapter).
-
-### [Feature] Galaxy hub scene with planet nodes
-- **Why:** M4 in the plan. Connects multiple levels into a campaign arc and gives the project its cartoon-galaxy identity. Without it, each level is an island.
-- **Acceptance:** New Phaser scene showing a starry galaxy map with planet nodes. Selecting a planet loads its level. At least one planet (the current corridor level, retitled) is reachable from the hub. Hub remembers which planets are unlocked.
-- **Size:** L
-- **Added:** 2026-05-12
-- **Started:** 2026-05-14
-- **Completed:** 2026-06-05
-- **Note:** Shipped: `src/game/scenes/Hub.ts` renders the starry node map, launches a planet on click (stub nodes show "Coming soon"), and reads unlock state from the durable `constellation:progress` localStorage save (`src/game/progression/save.ts`). Phase 1 refactored `Level.ts` → data-driven `Planet.ts` taking a `PlanetConfig`; "Return to Hub" + "Play again" both wired on the win screen. Unlock state, in-memory at first, became durable with the progression spine — which also resolved the session-persistence question (below).
 
 ### [Exploration] Decide on session persistence — save progress between sessions, or fresh each time?
 - **Why:** Open question from the plan. Affects hub-unlock design, save-file format, and how playtests work.
@@ -146,6 +137,15 @@ _(nothing in flight)_
 - **Added:** 2026-05-12
 - **Completed:** 2026-06-05
 - **Note:** Live-verified at `?solo=1&test=1`: ICE theme renders, planet-1 win durably unlocks planet-2 across reload, omit-platform now respawns (load-bearing). Reuses the existing three puzzles — a **themed puzzle variant** (e.g. snowflake-symbol math) remains a follow-up. Illuminate is *perceptually* (not physically) load-bearing by design, since the hidden-platform collider always exists.
+
+### [Feature] Galaxy hub scene with planet nodes
+- **Why:** M4 in the plan. Connects multiple levels into a campaign arc and gives the project its cartoon-galaxy identity. Without it, each level is an island.
+- **Acceptance:** New Phaser scene showing a starry galaxy map with planet nodes. Selecting a planet loads its level. At least one planet (the current corridor level, retitled) is reachable from the hub. Hub remembers which planets are unlocked.
+- **Size:** L
+- **Added:** 2026-05-12
+- **Started:** 2026-05-14
+- **Completed:** 2026-06-05
+- **Note:** Shipped: `src/game/scenes/Hub.ts` renders the starry node map, launches a planet on click (stub nodes show "Coming soon"), and reads unlock state from the durable `constellation:progress` localStorage save (`src/game/progression/save.ts`). Phase 1 refactored `Level.ts` → data-driven `Planet.ts` taking a `PlanetConfig`; "Return to Hub" + "Play again" both wired on the win screen. Unlock state, in-memory at first, became durable with the progression spine — which also resolved the session-persistence question (above).
 
 ### [Feature] Solo dev mode — fake the phone side for solo level testing
 - **Why:** Listed as an open question in the plan with a "lean yes" stance. Hugely useful for iterating on levels without scheduling co-op time. Without it, every level test requires two people and two devices.
