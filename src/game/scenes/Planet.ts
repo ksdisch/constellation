@@ -54,6 +54,9 @@ export class PlanetScene extends Phaser.Scene {
   private platforms!: Phaser.Physics.Arcade.StaticGroup;
   private hiddenPlatforms!: Phaser.Physics.Arcade.StaticGroup;
   private darkZone: Phaser.GameObjects.Rectangle | null = null;
+  // The hazard-curtain visual (hazard-lane planets only), kept so showWin() can
+  // hide it: at depth 40 it would otherwise stripe across the depth-0 win card.
+  private hazardRect: Phaser.GameObjects.Rectangle | null = null;
   private net!: GameNetClient;
   private won = false;
   private solo = false;
@@ -104,6 +107,9 @@ export class PlanetScene extends Phaser.Scene {
     this.lastCastBoosted = false;
     this.phaseActive = false;
     this.solveTimings = [];
+    // Conditionally assigned in create() (hazard-lane planets only), so a scene
+    // restart into a hazardless planet must not keep the destroyed old rect.
+    this.hazardRect = null;
     // Drop any cue recorded by a prior run so the bridge starts clean (keeps the
     // audio context alive — see resetLastCue vs resetAudio).
     resetLastCue();
@@ -181,53 +187,58 @@ export class PlanetScene extends Phaser.Scene {
     // link indicator is shifted left below to keep clear of its hit area.
     addMuteButton(this, 948, 8);
 
-    const linkIndicator = this.add
-      .text(872, 16, '● phone linked', {
-        fontFamily: 'system-ui, sans-serif',
-        fontSize: '12px',
-        color: '#98ffc8',
-      })
-      .setOrigin(1, 0)
-      .setScrollFactor(0);
+    // The phone-link indicator + net wiring exist only in co-op: solo mode never
+    // connects a socket (Boot skips net.connect()), so a green "phone linked"
+    // there was a lie (F-15) and the handlers below could never fire.
+    if (!this.solo) {
+      const linkIndicator = this.add
+        .text(872, 16, '● phone linked', {
+          fontFamily: 'system-ui, sans-serif',
+          fontSize: '12px',
+          color: '#98ffc8',
+        })
+        .setOrigin(1, 0)
+        .setScrollFactor(0);
 
-    // Keep the unsubscribe and release it on shutdown: without it, every
-    // replay/planet entry stacked another live handler on the shared net
-    // client, so one phone solve executed castPower() N+1 times and pushed
-    // N+1 solveTimings entries into the persisted telemetry (F-05).
-    const off = this.net.onMessage((msg) => {
-      if (msg.type === 'peer-disconnected' && msg.peer === 'phone') {
-        linkIndicator.setText('● phone disconnected');
+      // Keep the unsubscribe and release it on shutdown: without it, every
+      // replay/planet entry stacked another live handler on the shared net
+      // client, so one phone solve executed castPower() N+1 times and pushed
+      // N+1 solveTimings entries into the persisted telemetry (F-05).
+      const off = this.net.onMessage((msg) => {
+        if (msg.type === 'peer-disconnected' && msg.peer === 'phone') {
+          linkIndicator.setText('● phone disconnected');
+          linkIndicator.setColor('#ff9090');
+          return;
+        }
+        // A phone that joins (or rejoins) mid-planet gets the theme so its puzzles
+        // match this planet without waiting for the next scene start — and the
+        // link indicator turns green again (F-16).
+        if (msg.type === 'phone-joined') {
+          linkIndicator.setText('● phone linked');
+          linkIndicator.setColor('#98ffc8');
+          this.announceTheme();
+          return;
+        }
+        if (msg.type !== 'power-cast') return;
+        // Buffer the phone player's solve duration for this run's rhythm portrait.
+        // Recorded only — casting is byte-identical whether or not solveMs is set.
+        if (typeof msg.solveMs === 'number') {
+          this.solveTimings.push({ power: msg.powerId, ms: msg.solveMs });
+        }
+        this.castPower(msg.powerId, msg.boosted ?? false);
+      });
+      // The game's OWN socket dying is distinct from the phone leaving: no
+      // peer-disconnected will arrive (the relay is gone), so flip the indicator
+      // from the close callback instead (F-17).
+      this.net.onClose(() => {
+        linkIndicator.setText('● connection lost');
         linkIndicator.setColor('#ff9090');
-        return;
-      }
-      // A phone that joins (or rejoins) mid-planet gets the theme so its puzzles
-      // match this planet without waiting for the next scene start — and the
-      // link indicator turns green again (F-16).
-      if (msg.type === 'phone-joined') {
-        linkIndicator.setText('● phone linked');
-        linkIndicator.setColor('#98ffc8');
-        this.announceTheme();
-        return;
-      }
-      if (msg.type !== 'power-cast') return;
-      // Buffer the phone player's solve duration for this run's rhythm portrait.
-      // Recorded only — casting is byte-identical whether or not solveMs is set.
-      if (typeof msg.solveMs === 'number') {
-        this.solveTimings.push({ power: msg.powerId, ms: msg.solveMs });
-      }
-      this.castPower(msg.powerId, msg.boosted ?? false);
-    });
-    // The game's OWN socket dying is distinct from the phone leaving: no
-    // peer-disconnected will arrive (the relay is gone), so flip the indicator
-    // from the close callback instead (F-17).
-    this.net.onClose(() => {
-      linkIndicator.setText('● connection lost');
-      linkIndicator.setColor('#ff9090');
-    });
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      off();
-      this.net.onClose(null);
-    });
+      });
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+        off();
+        this.net.onClose(null);
+      });
+    }
 
     // Tell the phone which theme to dress its puzzles in. Forwarded by the relay;
     // a missing/late phone is a harmless no-op (and is re-served on phone-joined).
@@ -283,6 +294,7 @@ export class PlanetScene extends Phaser.Scene {
         .rectangle(h.x, h.y, h.width, h.height, HAZARD_COLOR, 0.32)
         .setStrokeStyle(2, HAZARD_COLOR, 0.85)
         .setDepth(40);
+      this.hazardRect = hazard;
       this.physics.add.existing(hazard, true);
       this.physics.add.overlap(this.astronaut.sprite, hazard, () => {
         if (!this.phaseActive && !this.won) this.resetAstronaut();
@@ -371,6 +383,10 @@ export class PlanetScene extends Phaser.Scene {
    * cast are unchanged. Illuminate has no boost (permanent binary reveal).
    */
   private castPower(powerId: PowerId, boosted = false) {
+    // A cast landing after the win is ignored outright (F-13): banners/cues/
+    // bursts would play over the end card, and summon-platform would drop a
+    // live platform under the overlay.
+    if (this.won) return;
     this.lastCastPower = powerId;
     this.lastCastBoosted = boosted;
     switch (powerId) {
@@ -380,7 +396,13 @@ export class PlanetScene extends Phaser.Scene {
         this.flashBanner(boosted ? 'DEEP FREEZE!' : 'FREEZE!', '#7ad8ff');
         break;
       case 'summon-platform':
-        if (this.platforms.getChildren().length > 0) break;
+        if (this.platforms.getChildren().length > 0) {
+          // Re-cast while one is alive: the platform stays as-is, but the phone
+          // player solved a whole puzzle — show that the cast arrived (F-19),
+          // mirroring illuminate's banner-only re-cast.
+          this.flashBanner('PLATFORM HOLDS!', '#9a7aff');
+          break;
+        }
         this.summonPlatform(boosted ? PLATFORM_BOOSTED_MS : PLATFORM_LIFETIME_MS);
         this.juice.trigger('platform', this.config.platformDrop.x, this.config.platformDrop.y, boosted);
         this.flashBanner(boosted ? 'LASTING PLATFORM!' : 'PLATFORM!', '#9a7aff');
@@ -530,6 +552,13 @@ export class PlanetScene extends Phaser.Scene {
     // flash masks the brief snap.
     this.cameras.main.stopFollow();
     this.cameras.main.centerOn(WORLD_W / 2, WORLD_H / 2);
+
+    // The hazard curtain (depth 40) and an unrevealed dark zone (depth 50) sit
+    // ABOVE the depth-0 end card, striping across the portrait (F-14). Hide them
+    // instead of raising the card: the card must stay BELOW the depth-60 win
+    // burst, which fires right after this.
+    this.hazardRect?.setVisible(false);
+    this.darkZone?.setVisible(false);
 
     // Win beat: mint burst + cue at the goal, plus a soft camera flash. No
     // physics/timeScale slow-mo — the next scene (Hub/replay) inherits a clean

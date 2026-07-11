@@ -4,6 +4,7 @@ import {
   startMusic,
   stopMusic,
   applyMusicMute,
+  resumeMusic,
   getMusicTrack,
   getMusicState,
   resetMusic,
@@ -40,6 +41,11 @@ class MockMusicSink implements MusicSink {
     this.stopCount += 1;
     this.playing = false;
   }
+  resume(): void {
+    this.resumeCount += 1;
+    this.current = 'running';
+  }
+  resumeCount = 0;
 }
 
 describe('TRACKS table', () => {
@@ -161,6 +167,20 @@ describe('startMusic dispatch', () => {
     expect(mock.started).toHaveLength(1);
     expect(mock.started[0]).toEqual(TRACKS.hub);
     expect(getMusicTrack()).toBe('hub');
+  });
+
+  it('resumeMusic pokes the sink (gesture-driven autoplay un-suspend, F-40)', () => {
+    const mock = new MockMusicSink();
+    setMusicSink(mock);
+    startMusic('hub');
+    resumeMusic();
+    expect(mock.resumeCount).toBe(1);
+    expect(getMusicState()).toBe('running');
+  });
+
+  it('resumeMusic is safe with no sink resolved (jsdom / pre-first-start)', () => {
+    resetMusic();
+    expect(() => resumeMusic()).not.toThrow();
   });
 
   it('applyMusicMute is a no-op when no track is active', () => {

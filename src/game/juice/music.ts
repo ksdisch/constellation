@@ -63,6 +63,8 @@ export interface MusicSink {
   start(spec: TrackSpec): void;
   /** Stop and tear down the current loop. Idempotent. */
   stop(): void;
+  /** Best-effort context resume (WebAudio autoplay policy). Idempotent. */
+  resume(): void;
   /** Underlying context state, for observability ('suspended' | 'running' | …). */
   readonly state: string;
   /** True while a loop is scheduling. */
@@ -72,10 +74,15 @@ export interface MusicSink {
 // Standard WebAudio lookahead scheduler constants.
 const LOOKAHEAD_MS = 50; // how often the scheduler wakes
 const SCHEDULE_AHEAD = 0.2; // seconds of audio scheduled past `currentTime`
+// How long a stopped track's master GainNode stays connected before release:
+// past the 0.2s drone fade and the tail of any already-scheduled note
+// (SCHEDULE_AHEAD + the longest note envelope ≈ 1.05s) — an immediate
+// disconnect would audibly clip them.
+const MASTER_RELEASE_MS = 1200;
 
 /** Default sink: a real WebAudio graph driving a generative loop + drone. */
 class WebAudioMusicSink implements MusicSink {
-  private master!: GainNode;
+  private master: GainNode | null = null;
   private drone: OscillatorNode | null = null;
   private droneGainNode: GainNode | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -97,9 +104,10 @@ class WebAudioMusicSink implements MusicSink {
   start(spec: TrackSpec): void {
     this.stopInternal();
     if (this.ctx.state === 'suspended') void this.ctx.resume();
-    this.master = this.ctx.createGain();
-    this.master.gain.setValueAtTime(1, this.ctx.currentTime);
-    this.master.connect(this.ctx.destination);
+    const master = this.ctx.createGain();
+    master.gain.setValueAtTime(1, this.ctx.currentTime);
+    master.connect(this.ctx.destination);
+    this.master = master;
     this.spec = spec;
     this.stepIndex = 0;
     this.nextNoteTime = this.ctx.currentTime + 0.1;
@@ -110,6 +118,10 @@ class WebAudioMusicSink implements MusicSink {
 
   stop(): void {
     this.stopInternal();
+  }
+
+  resume(): void {
+    if (this.ctx.state === 'suspended') void this.ctx.resume();
   }
 
   /** Schedule any melody notes that fall inside the lookahead window. */
@@ -128,6 +140,8 @@ class WebAudioMusicSink implements MusicSink {
 
   /** One soft-enveloped melody tone at `time`. */
   private scheduleNote(time: number, freq: number, spec: TrackSpec): void {
+    const master = this.master;
+    if (!master) return;
     const osc = this.ctx.createOscillator();
     const g = this.ctx.createGain();
     osc.type = spec.waveform;
@@ -138,7 +152,7 @@ class WebAudioMusicSink implements MusicSink {
     g.gain.linearRampToValueAtTime(spec.noteGain, time + attack);
     g.gain.exponentialRampToValueAtTime(0.0001, time + dur);
     osc.connect(g);
-    g.connect(this.master);
+    g.connect(master);
     osc.start(time);
     osc.stop(time + dur + 0.02);
   }
@@ -146,6 +160,8 @@ class WebAudioMusicSink implements MusicSink {
   /** A sustained sub-octave drone under the motif (skipped if droneGain is 0). */
   private startDrone(spec: TrackSpec): void {
     if (spec.droneGain <= 0) return;
+    const master = this.master;
+    if (!master) return;
     const now = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
     const g = this.ctx.createGain();
@@ -154,7 +170,7 @@ class WebAudioMusicSink implements MusicSink {
     g.gain.setValueAtTime(0.0001, now);
     g.gain.linearRampToValueAtTime(spec.droneGain, now + 1.2);
     osc.connect(g);
-    g.connect(this.master);
+    g.connect(master);
     osc.start(now);
     this.drone = osc;
     this.droneGainNode = g;
@@ -164,6 +180,13 @@ class WebAudioMusicSink implements MusicSink {
     if (this.timer !== null) {
       clearInterval(this.timer);
       this.timer = null;
+    }
+    // The context keeps any CONNECTED node alive, so without this every track
+    // switch leaked one master GainNode (F-41). Release after the fades/tails.
+    if (this.master) {
+      const oldMaster = this.master;
+      this.master = null;
+      setTimeout(() => oldMaster.disconnect(), MASTER_RELEASE_MS);
     }
     const now = this.ctx.currentTime;
     // Brief fade so switching tracks doesn't click.
@@ -251,6 +274,16 @@ export function applyMusicMute(): void {
     const s = resolveSink();
     s?.start(TRACKS[currentTrack]);
   }
+}
+
+/**
+ * Resume a suspended AudioContext from inside a user gesture. The first Hub
+ * visit calls startMusic with no gesture in the call stack, so the context can
+ * sit 'suspended' — silent — until the user interacts (F-40); Hub wires this to
+ * a one-time pointerdown. No-op when nothing is suspended or no sink exists.
+ */
+export function resumeMusic(): void {
+  sink?.resume();
 }
 
 /** The track currently playing (for the test bridge), or null when stopped. */

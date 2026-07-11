@@ -143,7 +143,11 @@ export class JuiceController {
       emitting: false,
     });
     emitter.setDepth(60);
-    emitter.explode(spec.count, x, y);
+    // explode()'s x/y args are EMITTER-LOCAL offsets (Particle.fire ADDS them to
+    // the emitter's position since Phaser 3.60), and this emitter already sits at
+    // world (x, y) — passing them again doubled every coordinate and threw all
+    // bursts off-screen (F-04).
+    emitter.explode(spec.count);
     this.lastBurst = { kind: event, count: spec.count };
     // One-shot teardown: drop the emitter once the last particle has died.
     this.scene.time.delayedCall(spec.lifespan + 120, () => emitter.destroy());
