@@ -1,7 +1,7 @@
 import { createServer } from 'node:http';
 import { WebSocketServer, WebSocket } from 'ws';
-import type { ClientToServerMsg, ServerToClientMsg } from '../src/shared/protocol';
-import { relayForward } from './relay';
+import type { ServerToClientMsg } from '../src/shared/protocol';
+import { parseClientMsg, relayForward } from './relay';
 
 const PORT = Number(process.env.PORT) || 3081;
 const ROOM_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -16,7 +16,9 @@ interface Room {
 
 const rooms = new Map<string, Room>();
 
-function generateRoomCode(): string {
+// Returns null when 10 attempts collide (astronomically unlikely at this room
+// count) — a throw here would escape the 'message' listener and kill the process.
+function generateRoomCode(): string | null {
   for (let attempt = 0; attempt < 10; attempt++) {
     let code = '';
     for (let i = 0; i < 6; i++) {
@@ -24,7 +26,7 @@ function generateRoomCode(): string {
     }
     if (!rooms.has(code)) return code;
   }
-  throw new Error('unable to generate unique room code');
+  return null;
 }
 
 function send(ws: WebSocket, msg: ServerToClientMsg): void {
@@ -44,18 +46,37 @@ const httpServer = createServer((req, res) => {
   res.end('not found\n');
 });
 
-const wss = new WebSocketServer({ server: httpServer });
+// Surviving runtime socket errors must not kill the process — but a failed
+// bind (EADDRINUSE at boot) should still exit nonzero so the platform restarts us.
+httpServer.on('error', (err) => {
+  console.error('[http error]', err);
+  if (!httpServer.listening) process.exit(1);
+});
+
+// Legit messages are <200 bytes; the ws default is 100 MiB — one hostile frame
+// away from OOM on a small VM.
+const wss = new WebSocketServer({ server: httpServer, maxPayload: 4096 });
+
+wss.on('error', (err) => {
+  console.error('[wss error]', err);
+});
 
 wss.on('connection', (ws) => {
   let assignedRoom: Room | null = null;
   let role: Role | null = null;
 
+  // ws emits 'error' for bad frames, invalid UTF-8, over-limit payloads, and
+  // plain TCP resets (a phone dropping on cellular); with no listener Node
+  // throws and takes the whole relay down. ws closes the socket itself; our
+  // 'close' handler below does the room cleanup.
+  ws.on('error', (err) => {
+    console.error('[ws error]', err.message);
+  });
+
   ws.on('message', (data) => {
-    let msg: ClientToServerMsg;
-    try {
-      msg = JSON.parse(data.toString()) as ClientToServerMsg;
-    } catch {
-      send(ws, { type: 'error', message: 'invalid json' });
+    const msg = parseClientMsg(data.toString());
+    if (!msg) {
+      send(ws, { type: 'error', message: 'invalid message' });
       return;
     }
 
@@ -65,6 +86,10 @@ wss.on('connection', (ws) => {
         return;
       }
       const code = generateRoomCode();
+      if (!code) {
+        send(ws, { type: 'error', message: 'server busy, try again' });
+        return;
+      }
       const room: Room = { code, game: ws };
       rooms.set(code, room);
       assignedRoom = room;

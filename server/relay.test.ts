@@ -1,4 +1,4 @@
-import { relayForward } from './relay';
+import { parseClientMsg, relayForward } from './relay';
 import type { ClientToServerMsg } from '../src/shared/protocol';
 
 /**
@@ -62,5 +62,48 @@ describe('relayForward', () => {
   it('never reads game state — output depends only on the message', () => {
     const msg: ClientToServerMsg = { type: 'puzzle-solved', powerId: 'summon-platform', boosted: true };
     expect(relayForward(msg)).toEqual(relayForward(msg));
+  });
+});
+
+/**
+ * Frame-shape guard for the connection handler. JSON.parse accepts plenty of
+ * payloads that are not messages — `null` in particular parses fine and then
+ * crashes the process the moment `.type` is dereferenced. Anything that isn't
+ * an object with a string `type` must come back null so the handler can reply
+ * with an error instead of dying; unknown-but-well-formed types still pass
+ * through (the allowlist drops them downstream).
+ */
+describe('parseClientMsg', () => {
+  it('rejects the 4-byte `null` frame that used to kill the relay', () => {
+    expect(parseClientMsg('null')).toBeNull();
+  });
+
+  it('rejects non-object JSON primitives', () => {
+    for (const raw of ['42', '"create-room"', 'true', 'false']) {
+      expect(parseClientMsg(raw)).toBeNull();
+    }
+  });
+
+  it('rejects arrays and objects without a string type', () => {
+    for (const raw of ['[]', '{}', '{"type":42}', '{"type":null}', '{"roomCode":"ABCDEF"}']) {
+      expect(parseClientMsg(raw)).toBeNull();
+    }
+  });
+
+  it('rejects unparsable frames', () => {
+    expect(parseClientMsg('not json at all')).toBeNull();
+    expect(parseClientMsg('')).toBeNull();
+  });
+
+  it('accepts a well-formed room-setup message', () => {
+    expect(parseClientMsg('{"type":"create-room","role":"game"}')).toEqual({
+      type: 'create-room',
+      role: 'game',
+    });
+  });
+
+  it('accepts a full cast message, fields intact', () => {
+    const msg: ClientToServerMsg = { type: 'cast-power', powerId: 'freeze-stars', boosted: true, solveMs: 4200 };
+    expect(parseClientMsg(JSON.stringify(msg))).toEqual(msg);
   });
 });
