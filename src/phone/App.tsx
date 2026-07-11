@@ -17,9 +17,26 @@ import {
   type TalentState,
 } from './talents/save';
 import type { PowerId, PuzzleTheme } from '../shared/protocol';
+import { QUICK_MATH_TOTAL_SECONDS } from './components/puzzles/quickMathLogic';
+import { TAP_SEQUENCE_TOTAL_SECONDS } from './components/puzzles/TapSequence';
+import { TRIVIA_TIMER_SECONDS } from './components/puzzles/triviaLogic';
+import { PHASE_ALIGN_TOTAL_SECONDS } from './components/puzzles/phaseAlignLogic';
 
 /** Bonus stardust the phone earns when the laptop clears a planet (M8). */
 const PLANET_BONUS = 3;
+
+/**
+ * Effective countdown length (seconds) each puzzle runs with, given the
+ * player's talent tuning — the telemetry cap for solveMs (F-50). Defaults are
+ * imported from the puzzles themselves so they can't drift; `satisfies` keeps
+ * the map exhaustive against the power set.
+ */
+const PUZZLE_TIMER_SECONDS = {
+  'freeze-stars': (t: PuzzleOverrides) => t['freeze-stars'].totalSeconds ?? QUICK_MATH_TOTAL_SECONDS,
+  'summon-platform': (t: PuzzleOverrides) => t['summon-platform'].totalSeconds ?? TAP_SEQUENCE_TOTAL_SECONDS,
+  'illuminate': (t: PuzzleOverrides) => t['illuminate'].timerSeconds ?? TRIVIA_TIMER_SECONDS,
+  'phase-dash': (t: PuzzleOverrides) => t['phase-dash'].totalSeconds ?? PHASE_ALIGN_TOTAL_SECONDS,
+} satisfies Record<PowerId, (t: PuzzleOverrides) => number>;
 
 // Small-viewport height that tracks mobile browser chrome (F-52): dvh where
 // the engine supports it, vh as the fallback for older mobile Safari.
@@ -81,19 +98,35 @@ export function App() {
 
   const tuning = useMemo(() => tuningFor(talents.unlocked), [talents.unlocked]);
 
-  // Which powers the phone player has strength-boosted. A ref tracks the latest
-  // set so the stable `onSolved` callback reads it without going stale.
+  // Which powers the phone player has strength-boosted. Refs re-synced every
+  // render let the stable callbacks below read the CURRENT values — including
+  // the current phase — without reaching into setState updaters, which must
+  // stay pure under StrictMode's double-invocation (F-22).
   const strength = useMemo(() => strengthFor(talents.unlocked), [talents.unlocked]);
   const strengthRef = useRef(strength);
   strengthRef.current = strength;
+  const tuningRef = useRef(tuning);
+  tuningRef.current = tuning;
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
+
+  // Persist talents as an effect of state, never inside the updaters (F-22).
+  // saveTalents never throws; the mount run just writes back the loaded state.
+  useEffect(() => {
+    saveTalents(talents);
+  }, [talents]);
 
   // Transient "★ +N — planet cleared" toast, cleared after a beat. The timer is
   // tracked so back-to-back clears re-arm cleanly (no premature flicker) and a
   // pending timer is dropped on unmount.
   const [bonus, setBonus] = useState<number | null>(null);
   const bonusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The cast-feedback → spellbook return is a one-shot too; tracked for the
+  // same clean unmount (F-48).
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => {
     if (bonusTimerRef.current !== null) clearTimeout(bonusTimerRef.current);
+    if (feedbackTimerRef.current !== null) clearTimeout(feedbackTimerRef.current);
   }, []);
 
   const handleJoin = useCallback(async (code: string) => {
@@ -120,11 +153,7 @@ export function App() {
         setPuzzleTheme(msg.theme);
       } else if (msg.type === 'planet-complete') {
         // The laptop cleared a planet — earn bonus stardust and flash a toast.
-        setTalents((t) => {
-          const next = earnStardust(t, PLANET_BONUS);
-          saveTalents(next);
-          return next;
-        });
+        setTalents((t) => earnStardust(t, PLANET_BONUS));
         setBonus(PLANET_BONUS);
         if (bonusTimerRef.current !== null) clearTimeout(bonusTimerRef.current);
         bonusTimerRef.current = setTimeout(() => setBonus(null), 2600);
@@ -168,42 +197,42 @@ export function App() {
   }, []);
 
   const unlock = useCallback((id: TalentId) => {
-    setTalents((t) => {
-      const next = unlockTalent(t, id);
-      if (next !== t) saveTalents(next);
-      return next;
-    });
+    // unlockTalent returns the SAME reference when the unlock is invalid, so
+    // React bails out and the persist effect doesn't re-fire.
+    setTalents((t) => unlockTalent(t, id));
   }, []);
 
   const onSolved = useCallback(() => {
-    let wasPuzzle = false;
-    setPhase((p) => {
-      if (p.kind !== 'puzzle') return p;
-      // Boost the cast if this power has a strength talent invested (M8).
-      const boosted = strengthRef.current.has(p.power);
-      // Measured solve duration for the laptop's rhythm portrait (M10). Clamp to
-      // ≥0 in case the clock is odd; a missing start (0) yields a sane elapsed.
-      const solveMs = Math.max(0, Date.now() - puzzleStartRef.current);
-      // send() reports whether the frame reached an OPEN socket (F-07): a
-      // solve on a dead link must not fake a "Cast!" or mint stardust —
-      // surface the loss instead.
-      const sent = clientRef.current?.send({ type: 'puzzle-solved', powerId: p.power, boosted, solveMs }) ?? false;
-      if (!sent) return { kind: 'disconnected', roomCode: p.roomCode };
-      wasPuzzle = true;
-      return { kind: 'cast-feedback', roomCode: p.roomCode, power: p.power };
-    });
-    // Earn a stardust for the solve — but only for a genuine puzzle-phase solve,
-    // so a stray/duplicate onSolved can't mint stardust without a cast.
-    if (wasPuzzle) {
-      setTalents((t) => {
-        const next = earnStardust(t);
-        saveTalents(next);
-        return next;
-      });
+    // Decide from the CURRENT phase via the render-synced ref — never inside a
+    // setState updater (F-22). Every puzzle guards onSolved behind its
+    // solvedRef, so a non-'puzzle' phase here is a stray/duplicate call:
+    // no cast, no stardust.
+    const p = phaseRef.current;
+    if (p.kind !== 'puzzle') return;
+    // Boost the cast if this power has a strength talent invested (M8).
+    const boosted = strengthRef.current.has(p.power);
+    // Measured solve duration for the laptop's rhythm portrait (M10). Clamp to
+    // ≥0 in case the clock is odd; a missing start (0) yields a sane elapsed.
+    // Capped at the puzzle's effective timer (F-50): backgrounding the tab
+    // pauses the tick-counted countdown but not this wall-clock, and telemetry
+    // must never report a solve longer than the timer allowed.
+    const capMs = PUZZLE_TIMER_SECONDS[p.power](tuningRef.current) * 1000;
+    const solveMs = Math.min(Math.max(0, Date.now() - puzzleStartRef.current), capMs);
+    // send() reports whether the frame reached an OPEN socket (F-07): a
+    // solve on a dead link must not fake a "Cast!" or mint stardust —
+    // surface the loss instead.
+    const sent = clientRef.current?.send({ type: 'puzzle-solved', powerId: p.power, boosted, solveMs }) ?? false;
+    if (!sent) {
+      setPhase({ kind: 'disconnected', roomCode: p.roomCode });
+      return;
     }
-    setTimeout(() => {
-      setPhase((p) =>
-        p.kind === 'cast-feedback' ? { kind: 'spellbook', roomCode: p.roomCode } : p
+    setPhase({ kind: 'cast-feedback', roomCode: p.roomCode, power: p.power });
+    // Earn a stardust for the solve; persistence rides the talents effect.
+    setTalents((t) => earnStardust(t));
+    if (feedbackTimerRef.current !== null) clearTimeout(feedbackTimerRef.current);
+    feedbackTimerRef.current = setTimeout(() => {
+      setPhase((prev) =>
+        prev.kind === 'cast-feedback' ? { kind: 'spellbook', roomCode: prev.roomCode } : prev
       );
     }, 1200);
   }, []);
