@@ -32,6 +32,12 @@ export function Trivia({
   const [wrong, setWrong] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(timerSeconds);
   const solvedRef = useRef(false);
+  // The wrong-flash / round-reset timer is tracked so a pending reset is
+  // dropped on unmount (F-48).
+  const wrongTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (wrongTimerRef.current !== null) clearTimeout(wrongTimerRef.current);
+  }, []);
 
   useEffect(() => {
     if (secondsLeft <= 0) return;
@@ -58,7 +64,8 @@ export function Trivia({
       }
     } else {
       setWrong(true);
-      setTimeout(() => {
+      if (wrongTimerRef.current !== null) clearTimeout(wrongTimerRef.current);
+      wrongTimerRef.current = setTimeout(() => {
         // "Second Chance" talent: stay on the current question instead of
         // resetting the whole round back to question 1.
         if (!forgiveMistakes) {

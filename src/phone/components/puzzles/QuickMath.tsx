@@ -23,6 +23,12 @@ export function QuickMath({ onSolved, onCancel, totalSeconds = QUICK_MATH_TOTAL_
   const [wrong, setWrong] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const solvedRef = useRef(false);
+  // The wrong-flash reset is tracked so rapid submits re-arm cleanly and a
+  // pending flash is dropped on unmount (F-48).
+  const wrongTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (wrongTimerRef.current !== null) clearTimeout(wrongTimerRef.current);
+  }, []);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -43,10 +49,23 @@ export function QuickMath({ onSolved, onCancel, totalSeconds = QUICK_MATH_TOTAL_
   const current = problems[idx];
   if (!current) return null;
 
+  function flashWrong() {
+    setWrong(true);
+    setInput('');
+    if (wrongTimerRef.current !== null) clearTimeout(wrongTimerRef.current);
+    wrongTimerRef.current = setTimeout(() => setWrong(false), 350);
+  }
+
   function submit(e: React.FormEvent) {
     e.preventDefault();
+    // Late/duplicate submits are no-ops once solved or timed out (F-49).
+    if (solvedRef.current || secondsLeft <= 0) return;
     const value = Number(input);
-    if (!Number.isFinite(value) || input.trim() === '') return;
+    if (input.trim() === '' || !Number.isFinite(value)) {
+      // Unparsable input gets the wrong-flash instead of a silent no-op (F-53).
+      flashWrong();
+      return;
+    }
     if (value === current.answer) {
       if (idx === problems.length - 1) {
         solvedRef.current = true;
@@ -57,9 +76,7 @@ export function QuickMath({ onSolved, onCancel, totalSeconds = QUICK_MATH_TOTAL_
         setWrong(false);
       }
     } else {
-      setWrong(true);
-      setInput('');
-      setTimeout(() => setWrong(false), 350);
+      flashWrong();
     }
   }
 
