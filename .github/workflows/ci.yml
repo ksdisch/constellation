@@ -1,0 +1,26 @@
+# Minimal CI gate (F-32): exactly the checks every session already runs
+# locally — nothing here needs an account, a browser, or a display. Extending
+# this workflow beyond these gates is a real decision (see session-start.md's
+# standing rules), not routine.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run typecheck:tests
+      - run: npm run test
+      - run: npm run build
+      - run: npm run smoke:relay
