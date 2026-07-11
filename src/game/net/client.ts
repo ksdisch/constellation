@@ -17,6 +17,7 @@ function serverUrl(): string {
 export class GameNetClient {
   private ws: WebSocket | null = null;
   private handlers = new Set<MessageHandler>();
+  private closeHandler: (() => void) | null = null;
 
   connect(): void {
     const ws = new WebSocket(serverUrl());
@@ -42,8 +43,17 @@ export class GameNetClient {
         }
       });
     });
+    // Surface socket death so scenes can stop showing a live-looking link
+    // (F-17). Unlike the phone client there is no connect() promise to reject,
+    // so this fires for BOTH a boot-time failure (relay down: error → close)
+    // and a mid-session drop. The guard skips a deliberate close()/reconnect
+    // (close() nulls this.ws first).
     ws.addEventListener('close', () => {
       console.warn('relay connection closed');
+      if (this.ws === ws) {
+        this.ws = null;
+        this.closeHandler?.();
+      }
     });
     this.ws = ws;
   }
@@ -53,6 +63,12 @@ export class GameNetClient {
     return () => {
       this.handlers.delete(handler);
     };
+  }
+
+  /** Single consumer — the active scene owns the link UI. Pass null to clear
+   *  on scene shutdown, exactly like the onMessage unsubscribe. */
+  onClose(handler: (() => void) | null): void {
+    this.closeHandler = handler;
   }
 
   send(msg: ClientToServerMsg): void {

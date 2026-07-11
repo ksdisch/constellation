@@ -80,7 +80,16 @@ export class LobbyScene extends Phaser.Scene {
         this.statusText.setColor('#ff9090');
       }
     });
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, off);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      off();
+      this.net.onClose(null);
+    });
+    // Relay unreachable at boot (or dropped while waiting): without this the
+    // Lobby sits on 'Connecting to relay…' forever (F-17).
+    this.net.onClose(() => {
+      this.statusText.setText('Relay unreachable — reload to retry');
+      this.statusText.setColor('#ff9090');
+    });
     this.net.connect();
   }
 }
