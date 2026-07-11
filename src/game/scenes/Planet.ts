@@ -195,7 +195,7 @@ export class PlanetScene extends Phaser.Scene {
     // client, so one phone solve executed castPower() N+1 times and pushed
     // N+1 solveTimings entries into the persisted telemetry (F-05).
     const off = this.net.onMessage((msg) => {
-      if (msg.type === 'error' && msg.message.includes('phone')) {
+      if (msg.type === 'peer-disconnected' && msg.peer === 'phone') {
         linkIndicator.setText('● phone disconnected');
         linkIndicator.setColor('#ff9090');
         return;

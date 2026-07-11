@@ -135,7 +135,7 @@ async function main(): Promise<void> {
     // 2. Game connects + creates a room.
     const game = new WebSocket(WS);
     await open(game);
-    send(game, { type: 'create-room', role: 'game' });
+    send(game, { type: 'create-room' });
     const created = await next(game, (m) => m.type === 'room-created', 'room-created');
     const roomCode = (created as { roomCode: string }).roomCode;
     if (!roomCode || roomCode.length !== 6) fail(`bad room code: ${roomCode}`);
@@ -145,7 +145,7 @@ async function main(): Promise<void> {
     const phone = new WebSocket(WS);
     await open(phone);
     const gamePhoneJoined = next(game, (m) => m.type === 'phone-joined', 'phone-joined');
-    send(phone, { type: 'join-room', role: 'phone', roomCode });
+    send(phone, { type: 'join-room', roomCode });
     await next(phone, (m) => m.type === 'joined', 'joined');
     await gamePhoneJoined;
     console.log('✓ phone joined, game notified');

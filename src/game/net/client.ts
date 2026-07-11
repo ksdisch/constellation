@@ -21,7 +21,7 @@ export class GameNetClient {
   connect(): void {
     const ws = new WebSocket(serverUrl());
     ws.addEventListener('open', () => {
-      this.send({ type: 'create-room', role: 'game' });
+      this.send({ type: 'create-room' });
     });
     ws.addEventListener('message', (e) => {
       let msg: ServerToClientMsg;

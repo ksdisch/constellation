@@ -113,6 +113,12 @@ export function App() {
         setBonus(PLANET_BONUS);
         if (bonusTimerRef.current !== null) clearTimeout(bonusTimerRef.current);
         bonusTimerRef.current = setTimeout(() => setBonus(null), 2600);
+      } else if (msg.type === 'peer-disconnected') {
+        // The game left, and rooms die with their game: a rebooted laptop
+        // mints a NEW code, so route to fresh input rather than a dead-code
+        // rejoin. Distinct from fatal relay errors (F-18).
+        setError('The game disconnected — start a room on the laptop and join again.');
+        setPhase({ kind: 'idle' });
       } else if (msg.type === 'error') {
         setError(msg.message);
         setPhase({ kind: 'idle' });
@@ -121,7 +127,7 @@ export function App() {
 
     try {
       await client.connect();
-      client.send({ type: 'join-room', role: 'phone', roomCode: code });
+      client.send({ type: 'join-room', roomCode: code });
     } catch {
       setError('Could not reach the game. Is the laptop dev server running?');
       setPhase({ kind: 'idle' });

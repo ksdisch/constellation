@@ -147,15 +147,17 @@ wss.on('connection', (ws) => {
   ws.on('close', () => {
     if (!assignedRoom) return;
     const code = assignedRoom.code;
+    // Dedicated peer-disconnected message (F-18) — previously overloaded onto
+    // {type:'error'} and sniffed by substring on both clients.
     if (role === 'game') {
       if (assignedRoom.phone) {
-        send(assignedRoom.phone, { type: 'error', message: 'game disconnected' });
+        send(assignedRoom.phone, { type: 'peer-disconnected', peer: 'game' });
       }
       rooms.delete(code);
       console.log(`[room ${code}] game left, room closed`);
     } else if (role === 'phone') {
       if (assignedRoom.game) {
-        send(assignedRoom.game, { type: 'error', message: 'phone disconnected' });
+        send(assignedRoom.game, { type: 'peer-disconnected', peer: 'phone' });
       }
       assignedRoom.phone = undefined;
       console.log(`[room ${code}] phone left`);

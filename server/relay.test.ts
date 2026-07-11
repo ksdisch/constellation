@@ -53,8 +53,8 @@ describe('relayForward', () => {
 
   it('does not peer-forward room-setup messages (handled separately)', () => {
     const setup: ClientToServerMsg[] = [
-      { type: 'create-room', role: 'game' },
-      { type: 'join-room', role: 'phone', roomCode: 'ABCDEF' },
+      { type: 'create-room' },
+      { type: 'join-room', roomCode: 'ABCDEF' },
     ];
     for (const msg of setup) expect(relayForward(msg)).toBeNull();
   });
@@ -96,9 +96,9 @@ describe('parseClientMsg', () => {
   });
 
   it('accepts a well-formed room-setup message', () => {
-    expect(parseClientMsg('{"type":"create-room","role":"game"}')).toEqual({
-      type: 'create-room',
-      role: 'game',
+    expect(parseClientMsg('{"type":"join-room","roomCode":"ABCDEF"}')).toEqual({
+      type: 'join-room',
+      roomCode: 'ABCDEF',
     });
   });
 
