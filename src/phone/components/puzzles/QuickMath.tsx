@@ -1,35 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PuzzleTheme } from '../../../shared/protocol';
 import { paletteFor } from '../../puzzleThemes';
-
-type Op = '+' | '−' | '×';
-interface Problem {
-  a: number;
-  b: number;
-  op: Op;
-  answer: number;
-}
-
-function randInt(min: number, max: number): number {
-  return min + Math.floor(Math.random() * (max - min + 1));
-}
-
-function makeProblem(): Problem {
-  const op: Op = (['+', '−', '×'] as const)[randInt(0, 2)];
-  if (op === '+') {
-    const a = randInt(8, 48);
-    const b = randInt(8, 48);
-    return { a, b, op, answer: a + b };
-  }
-  if (op === '−') {
-    const a = randInt(20, 70);
-    const b = randInt(5, a - 1);
-    return { a, b, op, answer: a - b };
-  }
-  const a = randInt(3, 12);
-  const b = randInt(3, 12);
-  return { a, b, op, answer: a * b };
-}
+import { QUICK_MATH_TOTAL_SECONDS, makeProblem } from './quickMathLogic';
 
 interface Props {
   onSolved: () => void;
@@ -39,7 +11,7 @@ interface Props {
   theme?: PuzzleTheme;
 }
 
-export function QuickMath({ onSolved, onCancel, totalSeconds = 30, problemCount = 3, theme }: Props) {
+export function QuickMath({ onSolved, onCancel, totalSeconds = QUICK_MATH_TOTAL_SECONDS, problemCount = 3, theme }: Props) {
   const pal = paletteFor(theme);
   const problems = useMemo(
     () => Array.from({ length: problemCount }, makeProblem),

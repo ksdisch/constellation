@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PuzzleTheme } from '../../../shared/protocol';
 import { paletteFor } from '../../puzzleThemes';
+import { PHASE_ALIGN_TOTAL_SECONDS, randomMisaligned } from './phaseAlignLogic';
 
 /**
  * Phase Align — the Phase Dash puzzle.
@@ -25,14 +26,8 @@ interface Props {
 }
 
 const ACCENT = '#5eead4';
-const MISALIGNED = [90, 180, 270] as const;
 
-/** A random non-aligned rotation so a dial never starts already solved. */
-function randomMisaligned(): number {
-  return MISALIGNED[Math.floor(Math.random() * MISALIGNED.length)];
-}
-
-export function PhaseAlign({ onSolved, onCancel, totalSeconds = 30, dialCount = 4, theme }: Props) {
+export function PhaseAlign({ onSolved, onCancel, totalSeconds = PHASE_ALIGN_TOTAL_SECONDS, dialCount = 4, theme }: Props) {
   const pal = paletteFor(theme);
   const [dials, setDials] = useState<number[]>(() =>
     Array.from({ length: dialCount }, randomMisaligned)
