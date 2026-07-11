@@ -1,6 +1,26 @@
 import type { ClientToServerMsg, ServerToClientMsg } from '../src/shared/protocol';
 
 /**
+ * Shape-guard a raw inbound frame before the connection handler touches it.
+ * JSON.parse happily returns `null` (and other primitives) — dereferencing
+ * `.type` on those crashes the process, taking every room with it. Returns the
+ * message only when it is an object carrying a string `type`; the handler
+ * replies with an error for anything else. Deliberately shallow: unknown types
+ * still flow to the allowlist below, which drops them.
+ */
+export function parseClientMsg(raw: string): ClientToServerMsg | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null;
+  if (typeof (parsed as { type?: unknown }).type !== 'string') return null;
+  return parsed as ClientToServerMsg;
+}
+
+/**
  * The relay's entire peer-forwarding policy, as a pure function: given a message
  * from one peer, what (if anything) does the OTHER peer receive?
  *

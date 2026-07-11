@@ -6,7 +6,9 @@
 # matched on BOTH sides in the same commit, and a PowerId change pulls in the
 # whole power contract. This hook injects that reminder right before the edit.
 #
-# It does NOT block the edit — it allows it and adds context, so it can't loop.
+# It does NOT decide the permission — it only injects context; the normal
+# permission flow still applies. (Emitting "permissionDecision":"allow" here
+# would AUTO-APPROVE edits to the exact file this hook exists to guard.)
 set -euo pipefail
 
 input=$(cat)
@@ -25,7 +27,7 @@ file=$(printf '%s' "$input" | node -e '
 case "$file" in
   */src/shared/protocol.ts|src/shared/protocol.ts)
     cat <<'JSON'
-{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow","additionalContext":"⚠ src/shared/protocol.ts is the strict wire-protocol boundary. In THIS SAME commit, update both src/game and src/phone to match. If you are changing PowerId, wire every side of the power contract: the Spellbook tile (Spellbook.tsx), a puzzle component (clone QuickMath.tsx) registered in App.tsx FEEDBACK *and* the render if-chain, and the castPower() switch in src/game/scenes/Planet.ts. The /new-power skill walks all of this."}}
+{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"⚠ src/shared/protocol.ts is the strict wire-protocol boundary. In THIS SAME commit, update both src/game and src/phone to match. If you are changing PowerId, wire every side of the power contract: the Spellbook tile (Spellbook.tsx), a puzzle component (clone QuickMath.tsx) registered in App.tsx FEEDBACK *and* the render if-chain, and the castPower() switch in src/game/scenes/Planet.ts. The /new-power skill walks all of this."}}
 JSON
     ;;
 esac
