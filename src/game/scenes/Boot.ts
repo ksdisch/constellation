@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { GameNetClient } from '../net/client';
 import { loadProgress } from '../progression/save';
 import { PLANETS } from '../planets/registry';
+import { GENERATED_THEMES } from '../planets/generatedThemes';
+import type { PlanetTheme } from '../planets/planet1';
 import { ensureBridge } from '../testBridge';
 import { setMuted } from '../juice/mute';
 import { loadSettings } from '../juice/settings';
@@ -39,13 +41,15 @@ export class BootScene extends Phaser.Scene {
     for (const entry of PLANETS) {
       const theme = entry.config?.theme;
       if (!theme) continue;
-      const id = entry.id;
-      this.makeSolidTexture(`ground-${id}`, 64, 40, theme.ground);
-      this.makeSolidTexture(`ceiling-${id}`, 400, 20, theme.ceiling);
-      this.makeSolidTexture(`enemy-${id}`, 32, 130, theme.enemy);
-      this.makeSolidTexture(`goal-${id}`, 28, 28, theme.goal);
-      this.makeSolidTexture(`platform-${id}`, 96, 14, theme.platform);
-      this.makeSolidTexture(`hidden-platform-${id}`, 120, 16, theme.hiddenPlatform);
+      this.makeThemeTextures(entry.id, theme);
+    }
+
+    // A GENERATED planet (grown from the pair's rhythm) is launched by scene-data,
+    // never registered — so its themed texture keys (`<key>-planet-generated-<slug>`)
+    // won't be produced by the registry loop above. generatePlanet() picks one of
+    // these themes and stamps the matching id, so pre-bake every library theme here.
+    for (const gt of GENERATED_THEMES) {
+      this.makeThemeTextures(`planet-generated-${gt.slug}`, gt.theme);
     }
 
     const isSolo = new URLSearchParams(window.location.search).get('solo') === '1';
@@ -63,6 +67,20 @@ export class BootScene extends Phaser.Scene {
     } else {
       this.scene.start('Lobby');
     }
+  }
+
+  /**
+   * Bake the six themed textures for one planet id, keyed `<key>-<id>` at the
+   * SAME sizes as the default texture set (so `Planet.tex()` resolves them 1:1).
+   * Shared by registered planets and generated ones.
+   */
+  private makeThemeTextures(id: string, theme: PlanetTheme) {
+    this.makeSolidTexture(`ground-${id}`, 64, 40, theme.ground);
+    this.makeSolidTexture(`ceiling-${id}`, 400, 20, theme.ceiling);
+    this.makeSolidTexture(`enemy-${id}`, 32, 130, theme.enemy);
+    this.makeSolidTexture(`goal-${id}`, 28, 28, theme.goal);
+    this.makeSolidTexture(`platform-${id}`, 96, 14, theme.platform);
+    this.makeSolidTexture(`hidden-platform-${id}`, 120, 16, theme.hiddenPlatform);
   }
 
   private makeSolidTexture(key: string, w: number, h: number, color: number) {

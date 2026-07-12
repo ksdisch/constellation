@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { deriveProfile, generatePlanet, type RhythmProfile } from './generate';
 import type { PlanetConfig } from './planet1';
 import type { PlanetTelemetry, Telemetry } from '../progression/save';
+import { GENERATED_THEMES } from './generatedThemes';
 
 /**
  * The safety proof for the "Planet That Knows You Two" generator spike.
@@ -75,6 +76,14 @@ function assertPlayable(c: PlanetConfig): void {
   const apexCenter = platformTop - SPRITE_HALF_H - JUMP_RISE;
   expect(apexCenter).toBeLessThan(c.goal.y - 14); // platform jump reaches
   expect(Math.abs(c.goal.x - c.hiddenPlatform.x)).toBeLessThan(245); // within a running jump
+
+  // The grown planet always wears a theme from the library, and its id carries
+  // that theme's slug so `Planet.tex()` resolves the textures `Boot` pre-baked.
+  const gt = GENERATED_THEMES.find((t) => c.id.endsWith(`-${t.slug}`));
+  expect(gt).toBeDefined();
+  if (!gt) return;
+  expect(c.theme).toEqual(gt.theme);
+  expect(c.puzzleTheme).toBe(gt.puzzleTheme);
 }
 
 const SIGNALS = [0, 0.25, 0.5, 0.75, 1];
@@ -107,16 +116,19 @@ describe('generatePlanet — always emits a playable planet', () => {
     }
   });
 
-  it('uses the default id and is themeless (default textures, no Boot churn)', () => {
+  it('stamps a themed id + theme from the library (Boot pre-bakes its textures)', () => {
     const c = generatePlanet(deriveProfile({}));
-    expect(c.id).toBe('planet-generated');
-    expect(c.theme).toBeUndefined();
-    expect(c.puzzleTheme).toBeUndefined();
+    const gt = GENERATED_THEMES.find((t) => c.id === `planet-generated-${t.slug}`);
+    expect(gt).toBeDefined();
+    expect(c.theme).toEqual(gt!.theme);
+    expect(c.puzzleTheme).toBe(gt!.puzzleTheme);
     expect(c.hazardLane).toBeDefined();
   });
 
-  it('honors an explicit id override', () => {
-    expect(generatePlanet(deriveProfile({}), 'planet-xyz').id).toBe('planet-xyz');
+  it('honors an explicit id prefix, still suffixed with the theme slug', () => {
+    const c = generatePlanet(deriveProfile({}), 'planet-xyz');
+    expect(c.id.startsWith('planet-xyz-')).toBe(true);
+    expect(GENERATED_THEMES.some((t) => c.id === `planet-xyz-${t.slug}`)).toBe(true);
   });
 });
 
