@@ -69,6 +69,11 @@ export type ConstellationBridge = {
   getState: () => BridgeState;
   cast: (powerId: PowerId) => void;
   startPlanet: (id: string) => void;
+  // Grow a planet from the pair's recorded telemetry and launch it (the "Planet
+  // That Knows You Two" spike). Unlike startPlanet, this needs no registry entry —
+  // the config is generated on the fly — so a headless driver can clear a grown
+  // planet via the usual getState/cast/input loop.
+  startGeneratedPlanet: () => void;
 };
 
 declare global {
@@ -132,10 +137,12 @@ const providers: {
   getState: () => BridgeState;
   cast: (id: PowerId) => void;
   startPlanet: (id: string) => void;
+  startGeneratedPlanet: () => void;
 } = {
   getState: zeroedState,
   cast: () => {},
   startPlanet: () => {},
+  startGeneratedPlanet: () => {},
 };
 
 /**
@@ -147,12 +154,14 @@ export function setBridgeProviders(
     getState: () => BridgeState;
     cast: (id: PowerId) => void;
     startPlanet: (id: string) => void;
+    startGeneratedPlanet: () => void;
   }>,
 ): void {
   if (!isTestMode()) return;
   if (p.getState) providers.getState = p.getState;
   if (p.cast) providers.cast = p.cast;
   if (p.startPlanet) providers.startPlanet = p.startPlanet;
+  if (p.startGeneratedPlanet) providers.startGeneratedPlanet = p.startGeneratedPlanet;
 }
 
 /**
@@ -177,6 +186,9 @@ export function ensureBridge(): void {
     },
     startPlanet(id) {
       providers.startPlanet(id);
+    },
+    startGeneratedPlanet() {
+      providers.startGeneratedPlanet();
     },
   };
 }
