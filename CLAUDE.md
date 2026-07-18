@@ -74,7 +74,7 @@ This repo uses an orchestrator-worker workflow for non-trivial features. See `.c
 
 ## Claude tooling for this repo
 
-Repo-local Claude Code slash commands (`.claude/commands/`) and skills (`.claude/skills/`), vendored so they work in cloud/web sessions and for collaborators. Items marked 💻 **local-only** need local tools (browser MCP, a running dev server, screenshots) and will NOT run in a cloud/web session.
+Repo-local Claude Code slash commands (`.claude/commands/`) and skills (`.claude/skills/`), vendored so they work in cloud/web sessions and for collaborators. Items marked 💻 **local-only** need local tools (browser MCP, a running dev server, screenshots, local TTS/voice, or the local `nlm` CLI / NotebookLM MCP) and will NOT run in a cloud/web session.
 
 **Commands**
 
@@ -88,12 +88,39 @@ Repo-local Claude Code slash commands (`.claude/commands/`) and skills (`.claude
 - `/tdd` — test-first loop: write failing tests, confirm they fail for the right reason, then code until green without editing the tests.
 - 💻 `/screenshot-iterate` — **local-only** visual loop: implement → screenshot the running app → compare to a mock → iterate.
 - `/verify-planet` — headlessly verify a planet end-to-end (default `planet-1`): boots `?solo=1&test=1` via the pinned `playwright` MCP and runs the `docs/AUTONOMY.md` playbook subset for that planet, emitting per-step PASS/FAIL + a verdict. Needs the dev server running and the `.mcp.json` MCP loaded. *Repo-specific (built here).*
+- `/claudify-repo` — vendor global commands/skills into this repo and/or brainstorm repo-specific automations.
+- `/prompt-optimize` — one-shot prompt rewrite: diagnose, pick a workflow archetype + model + effort, return a ready-to-paste prompt. Advisory only.
+- `/reframe-orchestrator` — reframe `.claude/orchestrator.md` into a mode-independent invariants & gates doc; docs-only.
+- `/mock-sql-demo` — text self-play mock SQL interview (interviewer + ideal candidate), then a debrief.
+- 💻 `/boot_server` — **local-only**: detect how the project is served, start the dev server, open it in Chrome.
+- 💻 `/catchup` — **local-only**: mid-session audio catch-up as an MP3 (local TTS); keeps working after.
+- 💻 `/envsetup` — **local-only**: open `.env` in the editor + the credential's generation page in Chrome, with a key stub pre-added.
+- 💻 `/mock-sql-audio` — **local-only**: full simulated SQL mock interview as an MP3 (local two-voice TTS).
+- 💻 `/mock-sql-interview` — **local-only**: live voice mock SQL interview.
+- 💻 `/smoke-test` — **local-only**: manual smoke test setup — opens the needed pages in Chrome, checklist saved under `docs/smoke/`.
 
 **Skills** (auto-trigger by description, or invoke explicitly)
 
 - `new-power` — scaffold a new astronaut power across every side of the power contract (protocol `PowerId` → Spellbook tile → puzzle component cloned from `QuickMath.tsx` → `App.tsx` `FEEDBACK` + render chain → `castPower()` switch in `Planet.ts`). Invoke with `/new-power` after the power is designed. *Repo-specific (built here).*
 - `new-planet` — scaffold a new planet across the planet contract (`planetN.ts` config implementing `PlanetConfig` → colocated `planetN.test.ts` cloned from the `planet3` template → ordered `PLANETS` entry in `registry.ts`, where **array order = progression**; `Boot.ts` picks up theme textures automatically). Invoke with `/new-planet` after the layout is designed. Sibling of `new-power`. *Repo-specific (built here).*
 - 💻 `match-the-mock` — **local-only**: implement a UI against a mock/Figma and iterate via screenshots until it matches. Auto-triggering sibling of `/screenshot-iterate`.
+- `artifacts-audit` — audit which engineering artifacts the repo should have; writes `docs/artifacts-plan.md`. Plans only.
+- `artifacts-generate` — generate artifacts from `docs/artifacts-plan.md`. Companion to `artifacts-audit`.
+- `bug-hunt` — proactive bug hunt: fan out finder agents, adversarially verify findings, ranked triage list.
+- `kickoff` — deep discovery interview → approved kickoff brief + phased plan → scaffold a new project + GitHub repo.
+- `mini` — kick off a new mini project under `~/Projects/mini/` (short interview + scaffold).
+- `project-guide` — comprehensive point-in-time guide to the project (purpose, architecture, history, interview lens); saves a dated file.
+- `research-paper` — end-of-project research paper + presenter pack from a completed repo's recorded results; opens a PR for review, never merges.
+- `seed-hunt` — end-of-project seed hunt: verify closure, harvest lessons, sweep arXiv, decision brief.
+- `ship-and-route` — land outstanding git work behind a review gate, walk the findings, route the next move with a starter prompt.
+- 💻 `audio-series` — **local-only**: episodic NotebookLM audio series for an existing notebook (needs `nlm`/NotebookLM MCP).
+- 💻 `interview-prep` — **local-only**: init/maintain a NotebookLM interview-prep notebook (needs `nlm`/NotebookLM MCP).
+- 💻 `narrate` — **local-only**: turn a short brief into a single-voice MP3 narration (local Kokoro TTS).
+- 💻 `nlm-skill` — **local-only**: expert guide for the NotebookLM CLI (`nlm`) and MCP server.
+- 💻 `notebook-assist` — **local-only**: refine artifacts / brainstorm / manage sources for an existing NotebookLM notebook.
+- 💻 `notebook-init` — **local-only**: initialize a new NotebookLM notebook end-to-end.
+- 💻 `notebook-merge` — **local-only**: merge 2+ overlapping NotebookLM notebooks into one unified notebook.
+- 💻 `video-series` — **local-only**: episodic NotebookLM video series for an existing notebook (needs `nlm`/NotebookLM MCP).
 
 **Subagents** (role prompts in `.claude/agents/` — dispatched inline via `subagent_type: "general-purpose"`, NOT registered subagent types; see the file header)
 
