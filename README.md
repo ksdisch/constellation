@@ -47,3 +47,7 @@ walkthrough — relay → Fly, clients → itch.io — in [docs/DEPLOY.md](docs/
 - **Phone client** (`src/phone/`) — React 19 + TypeScript
 - **Shared** (`src/shared/`) — wire protocol between game and phone
 - **Server** (`server/`) — Node + `ws` websocket relay
+
+---
+
+📚 **Project wiki:** [PROJECT.md](PROJECT.md) — status, scope, and next actions · [Wiki/_index.md](Wiki/_index.md) — topic pages and history
