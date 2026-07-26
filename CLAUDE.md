@@ -142,3 +142,16 @@ To vendor more of your global commands/skills or brainstorm new repo-specific au
 ## Operating Constraints
 
 @.claude/operating-constraints.md
+
+## Project Wiki
+
+This project uses the project-wiki skill. When integrating new sources, recording decisions, or pausing work:
+- Update `PROJECT.md` status and next actions
+- Update `HANDOFF.md` with what changed and what's next
+- Add durable understanding to `Wiki/` topic pages
+- Record decisions in `Decisions.md`
+- Keep `Wiki/_index.md` current
+
+(`Wiki/`, `Decisions.md`, and `Sources.md` are created on first need — templates live in the skill.)
+
+Invoke the `project-wiki` skill when wiki updates are needed.
