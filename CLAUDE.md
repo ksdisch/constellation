@@ -91,12 +91,9 @@ Repo-local Claude Code slash commands (`.claude/commands/`) and skills (`.claude
 - `/claudify-repo` — vendor global commands/skills into this repo and/or brainstorm repo-specific automations.
 - `/prompt-optimize` — one-shot prompt rewrite: diagnose, pick a workflow archetype + model + effort, return a ready-to-paste prompt. Advisory only.
 - `/reframe-orchestrator` — reframe `.claude/orchestrator.md` into a mode-independent invariants & gates doc; docs-only.
-- `/mock-sql-demo` — text self-play mock SQL interview (interviewer + ideal candidate), then a debrief.
 - 💻 `/boot_server` — **local-only**: detect how the project is served, start the dev server, open it in Chrome.
 - 💻 `/catchup` — **local-only**: mid-session audio catch-up as an MP3 (local TTS); keeps working after.
 - 💻 `/envsetup` — **local-only**: open `.env` in the editor + the credential's generation page in Chrome, with a key stub pre-added.
-- 💻 `/mock-sql-audio` — **local-only**: full simulated SQL mock interview as an MP3 (local two-voice TTS).
-- 💻 `/mock-sql-interview` — **local-only**: live voice mock SQL interview.
 - 💻 `/smoke-test` — **local-only**: manual smoke test setup — opens the needed pages in Chrome, checklist saved under `docs/smoke/`.
 
 **Skills** (auto-trigger by description, or invoke explicitly)
