@@ -45,7 +45,7 @@ const MIN_VIEWPORT_HEIGHT =
 
 const FEEDBACK: Record<PowerId, { title: string; color: string; sub: string }> = {
   'freeze-stars': { title: 'Cast!', color: '#7ad8ff', sub: 'Freeze Stars — enemies cold for 3s.' },
-  'summon-platform': { title: 'Cast!', color: '#9a7aff', sub: 'Platform — bridge waits, then holds 5s once he steps on.' },
+  'summon-platform': { title: 'Cast!', color: '#9a7aff', sub: 'Platform — bridge waits, then holds for a few seconds once they step on.' },
   'illuminate': { title: 'Cast!', color: '#f6c971', sub: 'Illuminate — dark zone revealed.' },
   'phase-dash': { title: 'Cast!', color: '#5eead4', sub: 'Phase Dash — slip through the plasma for 2.5s.' },
 };

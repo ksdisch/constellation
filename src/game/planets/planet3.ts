@@ -89,6 +89,17 @@ export const planet3Config: PlanetConfig = {
   //   platform right         =  x + 48        must be <= dark-zone left 805 → x <= 757
   // x=750 sits mid-window: blocked left = 670 (6px clear of the curtain), right
   // edge 798 (7px clear of the dark zone). Asserted in planet3.test.ts.
+  //
+  // A FOURTH interaction is ACCEPTED, not solved (adversarial review F7): the
+  // hidden platform's collider (x 820..940) is solid ALWAYS — only the dark
+  // Rectangle is conditional — so an astronaut standing on this ledge at its
+  // right end (left=788) has right=820 and bumps that invisible wall, feeling
+  // out the finale without Illuminate. Clean clearance would need
+  //   platformDrop.x + 48 + 32 <= hiddenPlatform.x - 60  → x <= 680
+  // which is UNSATISFIABLE inside the 744..757 window the curtain forces. F5 is
+  // a repeating death loop; this is a bounded erosion of a perceptual gate on an
+  // optional cast, so F5 wins. Do not move this x without re-deriving BOTH the
+  // curtain and dark-zone constraints above.
   platformDrop: { x: 750, y: 470 },
   hiddenPlatform: { x: HIDDEN_PLATFORM_X, y: HIDDEN_PLATFORM_Y },
   darkZone: { x: HIDDEN_PLATFORM_X, y: HIDDEN_PLATFORM_Y, width: 150, height: 120 },

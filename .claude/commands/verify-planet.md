@@ -27,9 +27,12 @@ sections if anything below is ambiguous; it is the source of truth.
 - **`input` is module-global.** Call `resetInput()` between maneuvers and before every scene
   restart, or a stuck `right` walks across restarts.
 - **The platform is arm-on-arrival.** A summoned platform holds indefinitely and only starts its
-  ~5s life on the astronaut's first contact — so it can be cast early and `platformCount` stays 1
-  while you cross the sentry band. Re-cast `summon-platform` only if `platformCount === 0` (the
-  astronaut touched it and then died).
+  ~5s life on the astronaut's first **landing** on it — a side clip or underside bonk does not arm
+  it (on planet-3 the ledge sits on continuous ground, so walking into it never starts the
+  countdown). So it can be cast early and `platformCount` stays 1 while you cross the sentry band;
+  never wait for `platformCount` to drop to 0 after a mere bump. Re-cast `summon-platform` only if
+  `platformCount === 0` (the astronaut landed on it and then died) — a re-cast onto an armed
+  platform refreshes it rather than being swallowed.
 - **Driving live physics is the flake source.** Prefer the deterministic `input` seam over synthetic
   keystrokes. planet-1 is the most robust headless clear.
 
@@ -46,8 +49,9 @@ sections if anything below is ambiguous; it is the source of truth.
 ## 3. Positive clear (step 3)
 - `startPlanet('${ARGUMENTS:-planet-1}')`; poll until `sceneKey === 'Planet'`.
 - Drive `input.right = true`; cast the planet's load-bearing powers at the right beats:
-  `cast('freeze-stars')` near the sentry, `cast('summon-platform')` at the pit (re-cast if
-  `platformCount === 0`), `cast('illuminate')` near the hidden ledge; bunny-hop (`input.jump = true`)
+  `cast('freeze-stars')` near the sentry, `cast('summon-platform')` (it holds until the astronaut
+  *lands* on it, so it can be cast early; re-cast only if `platformCount === 0`),
+  `cast('illuminate')` near the hidden ledge; bunny-hop (`input.jump = true`)
   across. `resetInput()` between distinct maneuvers.
 - Expect `won === true`, `completed['${ARGUMENTS:-planet-1}'] === true`, and the next planet present
   in `unlockedPlanets`.
