@@ -17,6 +17,9 @@ import { addMuteButton } from '../juice/muteButton';
 const FREEZE_DURATION_MS = 3000;
 const PLATFORM_LIFETIME_MS = 5000;
 const PLATFORM_FADE_OUT_MS = 800;
+// Slop allowance when deciding "the astronaut LANDED on this platform" rather
+// than clipped its side — see armPlatform().
+const PLATFORM_LANDING_EPSILON = 2;
 const DARK_ZONE_FADE_MS = 800;
 // Phase Dash: an invulnerability WINDOW vs. the hazard lane (the load-bearing
 // part — a calm walk-through, not a reaction), plus a brief dash speed boost so
@@ -399,18 +402,28 @@ export class PlanetScene extends Phaser.Scene {
         this.juice.trigger('freeze', this.enemy.sprite.x, this.enemy.sprite.y, boosted);
         this.flashBanner(boosted ? 'DEEP FREEZE!' : 'FREEZE!', '#7ad8ff');
         break;
-      case 'summon-platform':
-        if (this.platforms.getChildren().length > 0) {
-          // Re-cast while one is alive: the platform stays as-is, but the phone
-          // player solved a whole puzzle — show that the cast arrived (F-19),
-          // mirroring illuminate's banner-only re-cast.
+      case 'summon-platform': {
+        const live = this.platforms.getChildren()[0] as Phaser.Physics.Arcade.Sprite | undefined;
+        if (live && !live.getData('armed')) {
+          // Re-cast while an UNARMED platform waits: it holds until stepped on,
+          // so a re-cast cannot improve on it — show that the cast arrived
+          // (F-19), mirroring illuminate's banner-only re-cast.
           this.flashBanner('PLATFORM HOLDS!', '#9a7aff');
           break;
         }
-        this.summonPlatform(boosted ? PLATFORM_BOOSTED_MS : PLATFORM_LIFETIME_MS);
+        if (live) {
+          // Re-cast onto an ARMED platform (already counting down): the phone
+          // player just spent another ~5s solve, so hand the bridge a fresh
+          // window instead of swallowing the cast under a banner that claims
+          // it is fine — the swallow is what made a burnt platform terminal.
+          this.refreshPlatform(live, boosted ? PLATFORM_BOOSTED_MS : PLATFORM_LIFETIME_MS);
+        } else {
+          this.summonPlatform(boosted ? PLATFORM_BOOSTED_MS : PLATFORM_LIFETIME_MS);
+        }
         this.juice.trigger('platform', this.config.platformDrop.x, this.config.platformDrop.y, boosted);
         this.flashBanner(boosted ? 'LASTING PLATFORM!' : 'PLATFORM!', '#9a7aff');
         break;
+      }
       case 'illuminate':
         this.illuminate();
         break;
@@ -492,16 +505,31 @@ export class PlanetScene extends Phaser.Scene {
   }
 
   /**
-   * Start a platform's expiry countdown on the astronaut's FIRST contact. Fired
+   * Start a platform's expiry countdown when the astronaut LANDS on it. Fired
    * from the astronaut↔platforms collider, so it runs every frame the astronaut
    * rests on it — the `armed` flag makes all but the first call a no-op, and the
    * fade/destroy is the same one summonPlatform() used to schedule at drop time.
+   *
+   * The landing gate is load-bearing, not decoration: the collider fires on ANY
+   * resolved contact, on any face. Without it, a jump that undershoots and clips
+   * the platform's SIDE on the way into the pit would burn the whole bridge on a
+   * platform nobody stood on — the astronaut respawns back at spawn.x needing a
+   * fresh freeze to re-cross the sentry band, and cannot possibly return in
+   * time. On planet-3 it is worse than an edge case: the pit there is degenerate
+   * (continuous ground) and the platform is a knee-high optional ledge, so a
+   * horizontal body-bump at ground level is its ONLY possible first contact.
    */
   private armPlatform(sprite: Phaser.Physics.Arcade.Sprite) {
     if (sprite.getData('armed')) return;
+    const astronaut = this.astronaut.sprite.body as Phaser.Physics.Arcade.Body;
+    const platform = sprite.body as Phaser.Physics.Arcade.StaticBody;
+    // Landed => arcade separation has parked the astronaut's feet on the
+    // platform's top face. A side clip leaves the feet well below it; a bonk on
+    // the underside leaves them below it too. 2px absorbs separation slop.
+    if (astronaut.bottom > platform.top + PLATFORM_LANDING_EPSILON) return;
     sprite.setData('armed', true);
     const lifetimeMs = sprite.getData('lifetimeMs') as number;
-    this.time.delayedCall(lifetimeMs - PLATFORM_FADE_OUT_MS, () => {
+    const timer = this.time.delayedCall(lifetimeMs - PLATFORM_FADE_OUT_MS, () => {
       this.tweens.add({
         targets: sprite,
         alpha: 0,
@@ -509,6 +537,24 @@ export class PlanetScene extends Phaser.Scene {
         onComplete: () => sprite.destroy(),
       });
     });
+    // Kept so a re-cast can cancel the countdown rather than be swallowed.
+    sprite.setData('expiryTimer', timer);
+  }
+
+  /**
+   * Hand an already-counting-down platform a fresh window: cancel the pending
+   * expiry, undo any fade in flight, and put it back into the "waiting to be
+   * stepped on" state. An astronaut still standing on it re-arms next frame (a
+   * full new lifetime); one that has fallen off gets the same indefinite hold a
+   * first cast would have given.
+   */
+  private refreshPlatform(sprite: Phaser.Physics.Arcade.Sprite, lifetimeMs: number) {
+    const timer = sprite.getData('expiryTimer') as Phaser.Time.TimerEvent | undefined;
+    timer?.remove();
+    this.tweens.killTweensOf(sprite);
+    sprite.setAlpha(1);
+    sprite.setData('lifetimeMs', lifetimeMs);
+    sprite.setData('armed', false);
   }
 
   /**
