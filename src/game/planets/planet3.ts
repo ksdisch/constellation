@@ -76,9 +76,20 @@ export const planet3Config: PlanetConfig = {
   // Optional flourish: casting Summon Platform drops a small ledge here. Not a
   // gate (the ground is continuous), so it is purely a player's choice. Placed
   // in the open span PAST the curtain (right edge 664) and BEFORE the dark zone
-  // (left edge 805) — the 96px platform (632..728 if centered at 680) would
-  // otherwise overlap the curtain's respawn band, so center it at 730 (682..778).
-  platformDrop: { x: 730, y: 470 },
+  // (left edge 805).
+  //
+  // The centre is pinned by a THIRD constraint (adversarial review F5): the
+  // platform sits knee-high on continuous ground, so an astronaut walking right
+  // is BLOCKED by its left face rather than landing on it — and a summoned
+  // platform only starts its life on a landing, so a never-mounted one persists.
+  // At the old x=730 (span 682..778) a blocked 32px-wide astronaut sat at
+  // left=650, i.e. 14px INSIDE the curtain's 576..664 band, so it died the
+  // instant the Phase Dash window closed — on every attempt, forever.
+  //   blocked astronaut left = (x - 48) - 32  must be >= curtain right 664 → x >= 744
+  //   platform right         =  x + 48        must be <= dark-zone left 805 → x <= 757
+  // x=750 sits mid-window: blocked left = 670 (6px clear of the curtain), right
+  // edge 798 (7px clear of the dark zone). Asserted in planet3.test.ts.
+  platformDrop: { x: 750, y: 470 },
   hiddenPlatform: { x: HIDDEN_PLATFORM_X, y: HIDDEN_PLATFORM_Y },
   darkZone: { x: HIDDEN_PLATFORM_X, y: HIDDEN_PLATFORM_Y, width: 150, height: 120 },
   fallRespawnY: 600,

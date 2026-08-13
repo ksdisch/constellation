@@ -128,6 +128,47 @@ describe('planet3Config — ground + bounds', () => {
   });
 });
 
+/**
+ * Summoned-platform placement (adversarial review F5).
+ *
+ * Planet-3's ground is continuous, so the summoned platform is a knee-high
+ * ledge ON the walking path rather than a bridge over a pit: an astronaut
+ * walking right is BLOCKED by its left face instead of landing on it. Because a
+ * platform's lifetime only starts on a LANDING, a never-mounted one persists for
+ * the rest of the scene — so wherever it leaves a blocked astronaut standing, it
+ * leaves them standing there indefinitely. That spot must not be inside the
+ * plasma curtain, which kills the moment the Phase Dash window closes.
+ */
+describe('planet3Config — summoned platform leaves no lethal pin', () => {
+  const PLATFORM_HALF_W = 48; // 96px platform texture (Boot.ts)
+  const ASTRONAUT_W = 32; // 32×48 sprite (Boot.ts / Astronaut.ts)
+
+  it('leaves a BLOCKED astronaut fully clear of the hazard curtain', () => {
+    const c = planet3Config;
+    const hazard = c.hazardLane!;
+    const curtainRight = hazard.x + hazard.width / 2;
+    const platformLeft = c.platformDrop.x - PLATFORM_HALF_W;
+    // Walking right into the ledge parks the astronaut's RIGHT edge on the
+    // platform's left face, so its left edge is one body-width further back.
+    const blockedAstronautLeft = platformLeft - ASTRONAUT_W;
+    expect(blockedAstronautLeft).toBeGreaterThanOrEqual(curtainRight);
+  });
+
+  it('sits at knee height on continuous ground (blocked, not landed, when walked into)', () => {
+    const c = planet3Config;
+    const platformTop = c.platformDrop.y - 7; // 14px platform texture
+    const astronautBottomOnGround = GROUND_SURFACE_Y;
+    // Feet below the ledge's top surface => a horizontal block, never a landing.
+    expect(astronautBottomOnGround).toBeGreaterThan(platformTop);
+  });
+
+  it('stays clear of the dark zone so the ledge is never hidden by it', () => {
+    const c = planet3Config;
+    const darkZoneLeft = c.darkZone.x - c.darkZone.width / 2;
+    expect(c.platformDrop.x + PLATFORM_HALF_W).toBeLessThanOrEqual(darkZoneLeft);
+  });
+});
+
 describe('planet3 progression', () => {
   it('is the last planet in the chain and is registered with a config', () => {
     const last = PLANETS[PLANETS.length - 1];
