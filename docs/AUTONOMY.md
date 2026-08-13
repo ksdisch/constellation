@@ -135,7 +135,7 @@ reaching y=600, `won` staying false, `maxX` never crossing the pit.
 
 1. **Boot** → navigate; `waitForFunction(() => !!window.__constellation)`; assert the 6 keys.
 2. **Clean slate** → `localStorage.removeItem('constellation:progress')`, reload.
-3. **Positive clear** → `startPlanet(id)`; poll `getState()`; set `input.right=true`; `cast('freeze-stars')` near the sentry, `cast('summon-platform')` (re-cast if `platformCount===0`, the platform expires after 5s), `cast('illuminate')` near the ledge; bunny-hop (`input.jump=true`) across; expect `won===true`, `completed[id]===true`, the next planet in `unlockedPlanets`.
+3. **Positive clear** → `startPlanet(id)`; poll `getState()`; set `input.right=true`; `cast('freeze-stars')` near the sentry, `cast('summon-platform')` (the platform holds until the astronaut touches it, so it can be cast early), `cast('illuminate')` near the ledge; bunny-hop (`input.jump=true`) across; expect `won===true`, `completed[id]===true`, the next planet in `unlockedPlanets`.
 4. **Negative — omit Freeze** → drive right only; expect `respawnCount` rises, `won` false, `astronautX` stuck before the corridor.
 5. **Negative — omit Platform** → freeze past the sentry, then drive right with no platform; expect `respawnCount` rises (fall into the pit), `won` false.
 6. **Illuminate (perceptual)** → assert `darkZonePresent` `true → false` on cast (not an omit test).
@@ -151,7 +151,7 @@ reaching y=600, `won` staying false, `maxX` never crossing the pit.
 
 - **Hub `getState` is zeroed** — always wait for `sceneKey === 'Planet'` before reading scene fields.
 - **`input` is module-global** — `resetInput()` between maneuvers, or a stuck `right` walks across restarts.
-- **Platform lifetime** — summoned platforms fade after 5000ms; a slow driver must re-cast when `platformCount===0`.
+- **Platform lifetime is arm-on-arrival** — a summoned platform holds indefinitely and only starts its 5000ms life (8000ms boosted) on the astronaut's FIRST contact, then fades. So `platformCount` stays 1 while the driver is still crossing the sentry band, and a driver that touches the platform and then dies must re-cast.
 - **Follow camera (M5)** — the planet camera now lerp-follows the astronaut horizontally (vertical is locked; `showWin()` recentres the frame for the end-card). `astronautX/Y` are **world** coords and are unaffected, but this is one more reason to assert on `won`/state, never on-screen pixels. The widened bounds are the *camera*'s only — physics world bounds (and thus reach-math) are unchanged.
 - **Driving live physics is the flake source** — prefer the deterministic `input` seam over synthetic keystrokes, poll state rather than sleeping fixed times, and assert on `won`/state, not pixels. (Mounting a stepping-stone platform headlessly is genuinely fiddly; the simplest robust positive clear is planet-1.)
 - The committed driver is an **MCP/Playwright playbook**, not a re-runnable in-repo suite (the stack is locked — no Playwright dependency). The durable, CI-able assertions live in Vitest (`*.test.ts`).

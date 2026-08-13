@@ -26,8 +26,10 @@ sections if anything below is ambiguous; it is the source of truth.
   `sceneKey === 'Planet'` before reading any scene field.
 - **`input` is module-global.** Call `resetInput()` between maneuvers and before every scene
   restart, or a stuck `right` walks across restarts.
-- **Re-cast the platform.** Summoned platforms fade after ~5s; if a maneuver stalls and
-  `platformCount === 0`, re-cast `summon-platform`.
+- **The platform is arm-on-arrival.** A summoned platform holds indefinitely and only starts its
+  ~5s life on the astronaut's first contact — so it can be cast early and `platformCount` stays 1
+  while you cross the sentry band. Re-cast `summon-platform` only if `platformCount === 0` (the
+  astronaut touched it and then died).
 - **Driving live physics is the flake source.** Prefer the deterministic `input` seam over synthetic
   keystrokes. planet-1 is the most robust headless clear.
 

@@ -262,7 +262,11 @@ export class PlanetScene extends Phaser.Scene {
     this.astronaut = new Astronaut(this, this.config.spawn.x, this.config.spawn.y);
     this.physics.add.collider(this.astronaut.sprite, ground);
     this.physics.add.collider(this.astronaut.sprite, ceiling);
-    this.physics.add.collider(this.astronaut.sprite, this.platforms);
+    // The summoned platform's lifetime starts on CONTACT, not on drop, so the
+    // collider doubles as the "astronaut reached it" signal (see armPlatform).
+    this.physics.add.collider(this.astronaut.sprite, this.platforms, (_astronaut, platform) => {
+      this.armPlatform(platform as Phaser.Physics.Arcade.Sprite);
+    });
     this.physics.add.collider(this.astronaut.sprite, this.hiddenPlatforms);
 
     // Cozy follow camera. Widen ONLY the camera bounds into flat-colour margin
@@ -462,11 +466,41 @@ export class PlanetScene extends Phaser.Scene {
     });
   }
 
+  /**
+   * Drop the bridge platform, ARMED BUT NOT COUNTING DOWN. The lifetime is not
+   * started here — see armPlatform(), which starts it on the astronaut's first
+   * contact.
+   *
+   * The playtest finding this answers: the pit at x=660–880 sits immediately
+   * after the sentry band, so a drop-time countdown forced the pair to hold a
+   * 3s freeze and a 5s platform open SIMULTANEOUSLY from two puzzles with a ~7×
+   * solve-time spread (freeze ~0.7s, platform ~4.9s). No pair ever managed the
+   * overlap; every death clustered at the pit lip. Holding the platform until
+   * it is stepped on makes the pit a coordination problem instead of a
+   * stopwatch problem — the phone can bank the platform first, then earn the
+   * freeze — while keeping BOTH powers mandatory: the pit is still uncrossable
+   * without a platform and the band is still unrunnable without a freeze.
+   */
   private summonPlatform(lifetimeMs: number) {
     const sprite = this.platforms.create(this.config.platformDrop.x, this.config.platformDrop.y, this.tex('platform')) as Phaser.Physics.Arcade.Sprite;
     sprite.setAlpha(0);
     sprite.refreshBody();
+    // Carried on the sprite rather than in a scene field so a scene restart
+    // (which rebuilds the group) can't leave a stale countdown behind.
+    sprite.setData('lifetimeMs', lifetimeMs);
     this.tweens.add({ targets: sprite, alpha: 1, duration: 200 });
+  }
+
+  /**
+   * Start a platform's expiry countdown on the astronaut's FIRST contact. Fired
+   * from the astronaut↔platforms collider, so it runs every frame the astronaut
+   * rests on it — the `armed` flag makes all but the first call a no-op, and the
+   * fade/destroy is the same one summonPlatform() used to schedule at drop time.
+   */
+  private armPlatform(sprite: Phaser.Physics.Arcade.Sprite) {
+    if (sprite.getData('armed')) return;
+    sprite.setData('armed', true);
+    const lifetimeMs = sprite.getData('lifetimeMs') as number;
     this.time.delayedCall(lifetimeMs - PLATFORM_FADE_OUT_MS, () => {
       this.tweens.add({
         targets: sprite,
