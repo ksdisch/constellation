@@ -480,9 +480,10 @@ export class PlanetScene extends Phaser.Scene {
   }
 
   /**
-   * Drop the bridge platform, ARMED BUT NOT COUNTING DOWN. The lifetime is not
-   * started here — see armPlatform(), which starts it on the astronaut's first
-   * contact.
+   * Drop the bridge platform, UNARMED — it holds indefinitely. The lifetime is
+   * not started here; see armPlatform(), which starts it on the astronaut's
+   * first LANDING on it. A side clip or an underside bonk is a contact but not
+   * a landing, and does not start the countdown.
    *
    * The playtest finding this answers: the pit at x=660–880 sits immediately
    * after the sentry band, so a drop-time countdown forced the pair to hold a
