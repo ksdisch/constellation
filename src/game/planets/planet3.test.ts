@@ -142,6 +142,10 @@ describe('planet3Config — ground + bounds', () => {
 describe('planet3Config — summoned platform leaves no lethal pin', () => {
   const PLATFORM_HALF_W = 48; // 96px platform texture (Boot.ts)
   const ASTRONAUT_W = 32; // 32×48 sprite (Boot.ts / Astronaut.ts)
+  const ASTRONAUT_H = 48;
+  // Mirrors PLATFORM_LANDING_EPSILON in src/game/scenes/Planet.ts — armPlatform
+  // arms only when `astronaut.bottom <= platform.top + epsilon`.
+  const LANDING_EPSILON = 2;
 
   it('leaves a BLOCKED astronaut fully clear of the hazard curtain', () => {
     const c = planet3Config;
@@ -158,8 +162,15 @@ describe('planet3Config — summoned platform leaves no lethal pin', () => {
     const c = planet3Config;
     const platformTop = c.platformDrop.y - 7; // 14px platform texture
     const astronautBottomOnGround = GROUND_SURFACE_Y;
-    // Feet below the ledge's top surface => a horizontal block, never a landing.
-    expect(astronautBottomOnGround).toBeGreaterThan(platformTop);
+    // Lower bound — assert the RUNTIME gate, not a looser proxy: armPlatform
+    // rejects the contact only when the feet sit strictly below top + epsilon.
+    // (`> platformTop` alone would green-light a y that still arms at runtime.)
+    expect(astronautBottomOnGround).toBeGreaterThan(platformTop + LANDING_EPSILON);
+    // Upper bound — the ledge must still be in the walking path. Raised above a
+    // standing astronaut's head it would be walked UNDER, never blocked, which
+    // would make the curtain-clearance test above assert a scenario that cannot
+    // occur.
+    expect(platformTop).toBeGreaterThan(astronautBottomOnGround - ASTRONAUT_H);
   });
 
   it('stays clear of the dark zone so the ledge is never hidden by it', () => {
