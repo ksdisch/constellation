@@ -46,7 +46,13 @@ interface FunctionScore {
   crap: number;
 }
 
-/** Nodes that own a complexity score of their own. */
+/**
+ * Nodes that own a complexity score of their own. This is the canonical list;
+ * `nameOf` below deliberately matches a *subset* of it (arrows resolve through
+ * their parent, constructors have a fixed name). Adding a kind here without
+ * teaching `nameOf` about it degrades to `<anonymous>` rather than breaking —
+ * the row still carries a file:line, which is what makes it actionable.
+ */
 function isFunctionLike(node: ts.Node): boolean {
   return (
     ts.isFunctionDeclaration(node) ||
