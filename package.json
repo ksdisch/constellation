@@ -17,7 +17,9 @@
     "typecheck:tests": "tsc --noEmit -p tsconfig.tests.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "smoke:relay": "tsx scripts/smoke-relay.ts"
+    "smoke:relay": "tsx scripts/smoke-relay.ts",
+    "gate:deps": "depcruise src server scripts",
+    "gate:deps:json": "depcruise src server scripts --output-type json"
   },
   "dependencies": {
     "phaser": "^3.80.0",
