@@ -17,7 +17,10 @@
     "typecheck:tests": "tsc --noEmit -p tsconfig.tests.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "smoke:relay": "tsx scripts/smoke-relay.ts"
+    "smoke:relay": "tsx scripts/smoke-relay.ts",
+    "gate:deps": "depcruise src server scripts",
+    "gate:deps:json": "depcruise src server scripts --output-type json",
+    "gate:crap": "vitest run --coverage ; tsx scripts/crapReport.ts .coverage/coverage-final.json"
   },
   "dependencies": {
     "phaser": "^3.80.0",
@@ -31,7 +34,9 @@
     "@types/react-dom": "^19.0.0",
     "@types/ws": "^8.5.0",
     "@vitejs/plugin-react": "^4.3.0",
+    "@vitest/coverage-v8": "^4.1.11",
     "concurrently": "^9.0.0",
+    "dependency-cruiser": "^18.2.0",
     "jsdom": "^29.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",

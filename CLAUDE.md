@@ -30,6 +30,20 @@ npm run start:relay      # run the relay alone (the container CMD; honors $PORT)
 
 Vite binds to `0.0.0.0`; the printed LAN URL is what the phone uses on the same wifi. Playtest remains the integration gate for game feel; Vitest covers pure, framework-free logic (e.g. the progression/persistence module).
 
+## Wired gates (Preflight)
+
+Two deterministic gates are wired in this repo. Run both before proposing a merge review scope, and cite their results as Preflight evidence in the proposal — clean results are what let you honestly argue scope *down* (full loop → single round → skip) instead of defaulting to caution.
+
+```bash
+npm run gate:deps        # dependency conformance — exits non-zero if violated
+npm run gate:crap        # per-function CRAP ranking — always exits 0
+```
+
+- **`gate:deps`** cruises `src`, `server`, and `scripts` against [`.dependency-cruiser.cjs`](.dependency-cruiser.cjs), which **is** this repo's architecture spec — twelve rules encoding the module boundaries the Conventions section states in prose. It encodes *intended* architecture, not a baseline of current imports: there is no `--ignore-known` file and there must not be one. **A firing rule is a decision for Kyle — fix the code, or amend the rule — never something to silence.** Add `npm run gate:deps:json` for machine-readable output.
+- **`gate:crap`** regenerates coverage (v8 provider, into the gitignored `.coverage/`) and ranks every function by `complexity² × (1 − coverage)³ + complexity`, worst first. **Scores above 6 are flagged** — agent calibration; humans conventionally run under 4. The flag line is one explicit number rather than a per-review judgement call. It always exits 0 because a ranking has no pass/fail; a missing coverage file still prints a loud stderr error rather than passing silently.
+- **Both are report-only** for the pilot: no hook, no CI, no pre-push wiring, so neither can cost a false block. `gate:deps`' non-zero exit is a signal for a reader, not a block. **Promotion** to a blocking gate (or **Demotion** to an advisory Instrument if noisy) is Kyle's explicit per-repo call, due ~2026-09-25 — see claude-config's `docs/adr/0001-gates-earn-the-veto.md`.
+- **Reading the CRAP report:** Phaser scenes, entities, and React components are 0%-covered *by convention* (see Do/don't — they are playtest-gated, not unit-tested), so for those the score degenerates to a pure complexity ranking and dominates the top of the list. Real complexity-vs-coverage signal lives in the framework-free modules (`progression/`, `talents/`, `juice/`, `server/`, the `*Logic.ts` puzzle cores). Judge the two classes separately.
+
 ## Conventions
 
 - **TypeScript strict mode** with `noUnusedLocals`, `noUnusedParameters`, `noImplicitReturns`. No `any`. No unused imports or locals.

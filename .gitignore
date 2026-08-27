@@ -12,3 +12,6 @@ dist/
 
 # Playwright MCP scratch output (headless verification artifacts)
 .playwright-mcp/
+
+# Coverage data the CRAP gate regenerates on every run (npm run gate:crap)
+.coverage/
