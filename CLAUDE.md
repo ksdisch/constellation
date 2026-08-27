@@ -136,6 +136,20 @@ Repo-local Claude Code slash commands (`.claude/commands/`) and skills (`.claude
 
 To vendor more of your global commands/skills or brainstorm new repo-specific automations, run `/claudify-repo`.
 
+## Agent skills
+
+### Issue tracker
+
+Issues live in this repo's GitHub Issues (via the `gh` CLI). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-role vocabulary, label strings equal to role names. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
 ## Operating Constraints
 
 @.claude/operating-constraints.md
