@@ -95,20 +95,8 @@ Repo-local Claude Code slash commands (`.claude/commands/`) and skills (`.claude
 - `/begin` — open a session: orient on branch/commits/open PRs, recap the last `/wrap` log, route into the session-start spec.
 - `/wrap` — end-of-session recap: explains the why, builds vocab, active-recall quiz, saves a dated log.
 - `/handoff` — generate a paste-able handoff prompt for a fresh session; captures lessons + plan state.
-- `/trim-context` — find/fix CLAUDE.md & memory token bloat against the 40k limit; auto-applies fixes.
-- `/autonomous-milestone` — autonomously plan/build/test/verify a milestone end-to-end (fits the M0–M6 + orchestrator workflow); uses ultracode multi-agent orchestration. Browser-based verification is optional — the headless `?test=1` bridge covers it.
-- `/brainstorm` — multi-mode structured brainstorm (descendant of `/autonomous-milestone`'s brainstorm). Pick a **mode** first; each flips the scoring function and its two-sided critic gate: **Moonshot** (bold/visionary — the default, the inverted twin: kills timid/derivative), **QuickWin** (cheap high-leverage wins), **Subtract** (removals that improve), **Harden** (break it, then guard), **Premortem** (12-mo death + antibody), **Friction** (where users wince), **Delight** (unrewarded moments), **Positioning** (vs the substitute), **Reach** (how anyone finds it). Blind-parallel lenses → gate → refine → review-first Capture (`docs/ideas/` vision doc + linked backlog stub, per-mode type/size). `/moonshot` is a kept alias = `/brainstorm moonshot`. Vendored here + global; project-agnostic.
-- `/explore-plan` — explore → plan → confirm before any code; proposes 2–3 ranked approaches and waits for a pick.
 - `/tdd` — test-first loop: write failing tests, confirm they fail for the right reason, then code until green without editing the tests.
-- 💻 `/screenshot-iterate` — **local-only** visual loop: implement → screenshot the running app → compare to a mock → iterate.
 - `/verify-planet` — headlessly verify a planet end-to-end (default `planet-1`): boots `?solo=1&test=1` via the pinned `playwright` MCP and runs the `docs/AUTONOMY.md` playbook subset for that planet, emitting per-step PASS/FAIL + a verdict. Needs the dev server running and the `.mcp.json` MCP loaded. *Repo-specific (built here).*
-- `/claudify-repo` — vendor global commands/skills into this repo and/or brainstorm repo-specific automations.
-- `/prompt-optimize` — one-shot prompt rewrite: diagnose, pick a workflow archetype + model + effort, return a ready-to-paste prompt. Advisory only.
-- `/reframe-orchestrator` — reframe `.claude/orchestrator.md` into a mode-independent invariants & gates doc; docs-only.
-- 💻 `/boot_server` — **local-only**: detect how the project is served, start the dev server, open it in Chrome.
-- 💻 `/catchup` — **local-only**: mid-session audio catch-up as an MP3 (local TTS); keeps working after.
-- 💻 `/envsetup` — **local-only**: open `.env` in the editor + the credential's generation page in Chrome, with a key stub pre-added.
-- 💻 `/smoke-test` — **local-only**: manual smoke test setup — opens the needed pages in Chrome, checklist saved under `docs/smoke/`.
 
 **Skills** (auto-trigger by description, or invoke explicitly)
 
@@ -130,7 +118,6 @@ Repo-local Claude Code slash commands (`.claude/commands/`) and skills (`.claude
 
 - `playwright` — project-pinned browser driver (run via `npx @playwright/mcp@latest`, so nothing lands in `package.json`). Makes the `?test=1` headless-bridge playbook (`docs/AUTONOMY.md`) reproducible in cloud sessions / for collaborators; tools surface as `mcp__playwright__*`. Drives `/verify-planet`.
 
-To vendor more of your global commands/skills or brainstorm new repo-specific automations, run `/claudify-repo`.
 
 ## Agent skills
 
