@@ -114,24 +114,6 @@ Repo-local Claude Code slash commands (`.claude/commands/`) and skills (`.claude
 
 - `new-power` — scaffold a new astronaut power across every side of the power contract (protocol `PowerId` → Spellbook tile → puzzle component cloned from `QuickMath.tsx` → `App.tsx` `FEEDBACK` + render chain → `castPower()` switch in `Planet.ts`). Invoke with `/new-power` after the power is designed. *Repo-specific (built here).*
 - `new-planet` — scaffold a new planet across the planet contract (`planetN.ts` config implementing `PlanetConfig` → colocated `planetN.test.ts` cloned from the `planet3` template → ordered `PLANETS` entry in `registry.ts`, where **array order = progression**; `Boot.ts` picks up theme textures automatically). Invoke with `/new-planet` after the layout is designed. Sibling of `new-power`. *Repo-specific (built here).*
-- 💻 `match-the-mock` — **local-only**: implement a UI against a mock/Figma and iterate via screenshots until it matches. Auto-triggering sibling of `/screenshot-iterate`.
-- `artifacts-audit` — audit which engineering artifacts the repo should have; writes `docs/artifacts-plan.md`. Plans only.
-- `artifacts-generate` — generate artifacts from `docs/artifacts-plan.md`. Companion to `artifacts-audit`.
-- `bug-hunt` — proactive bug hunt: fan out finder agents, adversarially verify findings, ranked triage list.
-- `kickoff` — deep discovery interview → approved kickoff brief + phased plan → scaffold a new project + GitHub repo.
-- `mini` — kick off a new mini project under `~/Projects/mini/` (short interview + scaffold).
-- `project-guide` — comprehensive point-in-time guide to the project (purpose, architecture, history, interview lens); saves a dated file.
-- `research-paper` — end-of-project research paper + presenter pack from a completed repo's recorded results; opens a PR for review, never merges.
-- `seed-hunt` — end-of-project seed hunt: verify closure, harvest lessons, sweep arXiv, decision brief.
-- `ship-and-route` — land outstanding git work behind a review gate, walk the findings, route the next move with a starter prompt.
-- 💻 `audio-series` — **local-only**: episodic NotebookLM audio series for an existing notebook (needs `nlm`/NotebookLM MCP).
-- 💻 `interview-prep` — **local-only**: init/maintain a NotebookLM interview-prep notebook (needs `nlm`/NotebookLM MCP).
-- 💻 `narrate` — **local-only**: turn a short brief into a single-voice MP3 narration (local Kokoro TTS).
-- 💻 `nlm-skill` — **local-only**: expert guide for the NotebookLM CLI (`nlm`) and MCP server.
-- 💻 `notebook-assist` — **local-only**: refine artifacts / brainstorm / manage sources for an existing NotebookLM notebook.
-- 💻 `notebook-init` — **local-only**: initialize a new NotebookLM notebook end-to-end.
-- 💻 `notebook-merge` — **local-only**: merge 2+ overlapping NotebookLM notebooks into one unified notebook.
-- 💻 `video-series` — **local-only**: episodic NotebookLM video series for an existing notebook (needs `nlm`/NotebookLM MCP).
 
 **Subagents** (role prompts in `.claude/agents/` — dispatched inline via `subagent_type: "general-purpose"`, NOT registered subagent types; see the file header)
 
